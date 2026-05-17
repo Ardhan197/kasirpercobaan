@@ -86,7 +86,6 @@
         .list-view .product-card .info-text { flex: 1; }
         .list-view .product-card .list-add-btn { display: flex !important; }
 
-        /* STREAMING_CHUNK:Styling view overrides... -->
         /* SPLIT VIEW COMPACT OVERRIDES */
         body.force-split-view main { flex-direction: row !important; }
         body.force-split-view #cart-sidebar {
@@ -140,6 +139,7 @@
     <!-- Background Overlay -->
     <div class="fixed inset-0 bg-slate-50/95 -z-10 backdrop-blur-3xl"></div>
 
+    <!-- Login Screen -->
     <div id="login-screen" class="fixed inset-0 bg-slate-50 z-[9999] flex items-center justify-center transition-opacity duration-500">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm flex flex-col border border-slate-100 transform transition-transform duration-500 hover:scale-[1.01]">
             <div class="flex items-center justify-center gap-3 mb-8">
@@ -194,9 +194,7 @@
             </div>
         </div>
 
-        <!-- BAGIAN ADMIN (Akan disembunyikan saat mode Pelanggan) -->
         <div class="flex items-center gap-1.5 md:gap-3" id="admin-header-actions">
-            <!-- TOmbol Lonceng Notifikasi Pesanan Masuk -->
             <button id="new-order-alert-btn" onclick="openIncomingQueueModal()" class="hidden h-8 px-3 flex items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors duration-300 border border-red-600 active:scale-95 animate-pulse shadow-md shadow-red-500/30 gap-1.5 font-bold text-xs" title="Ada Pesanan Baru">
                 <i class="fa-solid fa-bell animate-ring"></i> <span id="new-order-alert-text">Pesanan Baru</span>
             </button>
@@ -223,7 +221,7 @@
             </button>
 
             <div id="connection-status" class="flex items-center gap-1.5 text-[9px] md:text-[10px] font-bold text-slate-600 bg-white px-2 py-1 md:px-3 md:py-1.5 rounded-full border border-slate-200 cursor-pointer shadow-sm transition-all duration-300 hover:bg-slate-50" onclick="openSettingsModal()">
-                <i class="fa-solid fa-circle-notch animate-spin"></i> <span class="hidden sm:inline">Memeriksa...</span>
+                <div class="w-1.5 h-1.5 rounded-full bg-slate-400"></div> <span class="text-slate-500 hidden sm:inline">Belum Diatur</span>
             </div>
         </div>
         
@@ -239,7 +237,6 @@
             </div>
         </div>
 
-        <!-- BAGIAN PELANGGAN (Hanya muncul saat mode QR Scan) -->
         <button id="customer-status-btn" onclick="openCustomerStatusModal()" class="hidden items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm hover:bg-slate-50 transition-colors relative active:scale-95 ml-2">
             <i class="fa-solid fa-receipt text-emerald-600 text-sm"></i>
             <span class="text-[10px] font-bold text-slate-700 hidden sm:inline">Status Pesanan</span>
@@ -300,15 +297,13 @@
             </ul>
         </div>
         <div class="p-4 border-t border-slate-100 text-center">
-            <p class="text-[10px] text-slate-400 font-medium">SmartPOS v2.4 - Cloud Base</p>
+            <p class="text-[10px] text-slate-400 font-medium">SmartPOS v2.5 - Super Sync</p>
         </div>
     </aside>
 
     <main class="flex-1 flex overflow-hidden w-full max-w-[1600px] mx-auto p-2 md:p-3 gap-2 md:gap-3 relative transition-all duration-300">
-        
         <section class="flex-1 flex flex-col bg-transparent h-full w-full min-w-0">
             <div class="pb-2 md:pb-3 shrink-0 flex flex-col gap-2">
-                
                 <div class="flex items-center gap-2 md:gap-3 w-full">
                     <div class="relative w-full group flex-1">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -329,9 +324,7 @@
                     </div>
                 </div>
                 
-                <div class="flex gap-1.5 md:gap-2 overflow-x-auto pb-1 scrollbar-hide snap-x" id="category-container">
-                    <!-- Categories dimuat dari JS -->
-                </div>
+                <div class="flex gap-1.5 md:gap-2 overflow-x-auto pb-1 scrollbar-hide snap-x" id="category-container"></div>
             </div>
 
             <div class="flex-1 overflow-y-auto pb-20 md:pb-16 pr-1 custom-scrollbar w-full" id="product-list">
@@ -395,7 +388,6 @@
                     <button onclick="saveCurrentOrder()" id="save-order-btn" class="w-1/3 bg-white border-2 border-slate-200 hover:border-teal-500 hover:text-teal-600 disabled:border-slate-100 disabled:text-slate-300 disabled:cursor-not-allowed text-slate-600 font-bold py-2.5 md:py-3 rounded-xl transition-all duration-300 active:scale-[0.98] flex justify-center items-center gap-1.5 text-xs md:text-sm" disabled title="Simpan Bill / Hold">
                         <i class="fa-solid fa-clock-rotate-left"></i> <span class="hidden lg:inline">Simpan</span>
                     </button>
-                    <!-- Tombol ini fungsi defaultnya Kasir, tapi akan dioverride via JS saat diakses pelanggan -->
                     <button onclick="openPaymentModal()" id="checkout-btn" class="flex-1 relative bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed text-white font-bold py-2.5 md:py-3 rounded-xl shadow-btn transition-all duration-300 ease-out active:scale-[0.98] flex justify-center items-center gap-2 overflow-hidden group text-xs md:text-sm" disabled>
                         <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-premium"></div>
                         <span class="relative z-10"><i class="fa-solid fa-credit-card mr-1"></i> Pembayaran</span>
@@ -496,7 +488,6 @@
     <div id="payment-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] hidden flex items-end md:items-center justify-center sm:p-4 opacity-0 transition-opacity duration-500 ease-premium">
         <div class="bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden transform translate-y-full md:translate-y-0 md:scale-95 transition-all duration-500 ease-premium relative flex flex-col md:flex-row border border-slate-100" id="payment-modal-content">
             
-            <!-- KOLOM KIRI: RINCIAN & SPLIT BILL -->
             <div class="w-full md:w-5/12 flex flex-col border-b md:border-b-0 md:border-r border-slate-100 bg-slate-50/50">
                 <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                     <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -520,7 +511,6 @@
                 <div class="flex-1 overflow-y-auto p-3 custom-scrollbar flex flex-col gap-2 max-h-[35vh] md:max-h-none" id="payment-split-items"></div>
             </div>
 
-            <!-- KOLOM KANAN: METODE PEMBAYARAN -->
             <div class="w-full md:w-7/12 flex flex-col bg-white">
                 <div class="hidden md:flex px-5 pt-5 pb-3 justify-between items-center shrink-0 border-b border-slate-50">
                     <h3 class="font-extrabold text-lg text-slate-900 tracking-tight">Proses Pembayaran</h3>
@@ -635,7 +625,43 @@
         </div>
     </div>
 
-    <!-- Modal Antrean Pesanan Masuk (Queue List) -->
+    <!-- Modal View Settings -->
+    <div id="view-settings-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[320px] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="view-settings-content">
+            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <div class="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center text-slate-700 text-xs border border-slate-200"><i class="fa-solid fa-desktop"></i></div>
+                    Tampilan
+                </h3>
+                <button onclick="closeViewSettings()" class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-200 text-slate-500 transition-colors duration-300 active:scale-90"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <div class="p-4 flex-1 bg-slate-50/50 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-800 mb-2">Model Daftar Menu</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-view-grid" onclick="setViewType('grid')" class="py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs">
+                            <i class="fa-solid fa-border-all text-sm"></i> Grid
+                        </button>
+                        <button id="btn-view-list" onclick="setViewType('list')" class="py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs">
+                            <i class="fa-solid fa-list text-sm"></i> List
+                        </button>
+                    </div>
+                </div>
+                <div id="grid-columns-settings" class="transition-all duration-300">
+                    <label class="block text-xs font-bold text-slate-800 mb-2">Kolom Grid (Kiri ke Kanan)</label>
+                    <div class="flex items-center gap-3 bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+                        <input type="range" id="grid-columns-range" min="1" max="6" value="3" class="w-full accent-emerald-500 h-1.5" oninput="updateGridColumnsDisplay()">
+                        <span id="grid-columns-val" class="font-bold text-sm text-slate-900 w-5 text-center">3</span>
+                    </div>
+                </div>
+            </div>
+            <div class="p-3 bg-white border-t border-slate-100 flex justify-end shrink-0">
+                <button onclick="closeViewSettings()" class="w-full py-2 text-sm bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-bold rounded-lg shadow-btn transition-all duration-300 active:scale-95">Selesai</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Antrean Pesanan Masuk -->
     <div id="incoming-queue-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[150] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[400px] max-h-[85vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="incoming-queue-content">
             <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-red-50 shrink-0">
@@ -645,14 +671,12 @@
                 <button onclick="closeIncomingQueueModal()" class="w-7 h-7 flex items-center justify-center rounded-full bg-white hover:bg-slate-200 text-slate-500 transition-colors shadow-sm border border-slate-200"><i class="fa-solid fa-xmark text-sm"></i></button>
             </div>
             <div class="p-4 flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar">
-                <div id="incoming-queue-list" class="flex flex-col gap-3">
-                    <!-- Dimuat via JS -->
-                </div>
+                <div id="incoming-queue-list" class="flex flex-col gap-3"></div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Konfirmasi Pesanan Baru (Untuk Kasir) -->
+    <!-- Modal Konfirmasi Pesanan Baru (Review) -->
     <div id="incoming-order-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[200] hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden transform scale-95 transition-all duration-300" id="incoming-order-content">
             <div class="bg-red-500 p-5 text-center relative overflow-hidden">
@@ -675,9 +699,7 @@
                         <span>Rincian Pesanan</span>
                         <span id="incoming-order-id" class="font-mono text-slate-400">SLF-12345</span>
                     </p>
-                    <div id="incoming-items-list" class="max-h-32 overflow-y-auto custom-scrollbar flex flex-col gap-1.5">
-                        <!-- Items rendered via JS -->
-                    </div>
+                    <div id="incoming-items-list" class="max-h-32 overflow-y-auto custom-scrollbar flex flex-col gap-1.5"></div>
                     <div class="mt-3 pt-3 border-t border-dashed border-slate-200 flex justify-between items-center">
                         <span class="text-xs font-bold text-slate-600">Total Harga</span>
                         <span class="text-lg font-black text-emerald-600" id="incoming-order-total">Rp 0</span>
@@ -702,7 +724,6 @@
                 <button onclick="closeSettingsModal()" class="w-7 h-7 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"><i class="fa-solid fa-xmark text-sm"></i></button>
             </div>
             <div class="p-4 overflow-y-auto custom-scrollbar bg-slate-50/50">
-                
                 <div class="mb-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm transition-all duration-300">
                     <label class="block text-[11px] font-bold mb-1.5 text-slate-800">Web App URL (Google Apps Script)</label>
                     <input type="url" id="script-url-input" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:bg-white text-xs text-slate-900" placeholder="https://script.google.com/macros/...">
@@ -901,24 +922,19 @@ function doPost(e) {
                         <label class="block text-[11px] font-bold text-slate-700 mb-1">Nama Produk <span class="text-red-500">*</span></label>
                         <input type="text" id="new-menu-name" class="w-full p-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" placeholder="Mis. Kopi Susu Aren">
                     </div>
-                    
                     <div>
                         <label class="block text-[11px] font-bold text-slate-700 mb-1">Kategori <span class="text-red-500">*</span></label>
                         <select id="new-menu-category" class="w-full p-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer">
                             <option value="">-- Pilih Kategori --</option>
-                            <!-- Dimuat JS -->
                         </select>
                     </div>
-
                     <div>
                         <label class="block text-[11px] font-bold text-slate-700 mb-1">Harga (Rp) <span class="text-red-500">*</span></label>
                         <input type="number" id="new-menu-price" class="w-full p-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" placeholder="Mis. 25000">
                     </div>
-
                     <div>
                         <label class="block text-[11px] font-bold text-slate-700 mb-1">URL Gambar</label>
                         <input type="url" id="new-menu-image" class="w-full p-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" placeholder="https://contoh.com/gambar.jpg">
-                        <p class="text-[9px] text-slate-400 mt-1">Kosongkan jika tidak ada, sistem akan memberikan gambar placeholder.</p>
                     </div>
                 </div>
             </div>
@@ -951,9 +967,7 @@ function doPost(e) {
 
             <div class="p-4 flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar">
                 <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Daftar Kategori</h4>
-                <div id="category-list-manager" class="flex flex-col gap-2">
-                    <!-- Dimuat JS -->
-                </div>
+                <div id="category-list-manager" class="flex flex-col gap-2"></div>
             </div>
         </div>
     </div>
@@ -985,7 +999,8 @@ function doPost(e) {
     <div id="print-receipt-area" class="hidden"></div>
 
     <script>
-        const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYR5t6e7XdzmdzZ1e84N60WaLmwWSbOG4x3E30TXPMNFLSMnRSIvuLpwzfJ4nhMrk4/exec';
+        const DEFAULT_SCRIPT_URL = 'AKfycbzYR5t6e7XdzmdzZ1e84N60WaLmwWSbOG4x3E30TXPMNFLSMnRSIvuLpwzfJ4nhMrk4'; 
+        const APP_API_KEY = 'SMARTPOS_SECURE_2024';
         
         let currentUser = null; 
 
@@ -1006,9 +1021,8 @@ function doPost(e) {
         let isSelfOrderMode = false;
         let pollingInterval = null; 
         
-        let qrSelectedTable = null; // Menyimpan status meja yang sedang dipilih pada modal QR
+        let qrSelectedTable = null; 
 
-        // Variables for Gatekeeper (Pesanan Masuk)
         let unconfirmedOrders = [];
         let acknowledgedOrders = [];
         try { acknowledgedOrders = JSON.parse(localStorage.getItem('pos_ack_orders') || '[]'); } catch(e) { acknowledgedOrders = []; }
@@ -1016,7 +1030,6 @@ function doPost(e) {
         let tableTokens = {};
         try { tableTokens = JSON.parse(localStorage.getItem('pos_table_tokens') || '{}'); } catch(e) { tableTokens = {}; }
         
-        // Variables for Customer Status
         let mySelfOrders = [];
         try { mySelfOrders = JSON.parse(localStorage.getItem('pos_my_orders') || '[]'); } catch(e) { mySelfOrders = []; }
         let customerPollingInterval = null;
@@ -1030,6 +1043,7 @@ function doPost(e) {
 
         const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
 
+        // FUNGSI INTI KEAMANAN KONEKSI DATABASE
         async function sendToGas(data) {
             if (!appConfig.scriptUrl) throw new Error("URL Database belum diatur!");
             const params = new URLSearchParams();
@@ -1039,9 +1053,16 @@ function doPost(e) {
                 const response = await fetch(appConfig.scriptUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: params.toString()
+                    body: params.toString(),
+                    cache: 'no-store' // Mencegah memori menyangkut
                 });
-                return await response.json();
+                
+                const textData = await response.text();
+                try {
+                    return JSON.parse(textData);
+                } catch(e) {
+                    throw new Error("Penyimpanan gagal. Deployment salah (Bukan JSON).");
+                }
             } catch (error) {
                 console.error("Fetch Error:", error);
                 throw error;
@@ -1157,8 +1178,8 @@ function doPost(e) {
                     setTimeout(() => { loginScreen.classList.add('hidden'); }, 500);
                     
                     applySplitView();
+                    updateConnectionStatus('checking');
                     startAdminPolling(); 
-                    updateConnectionStatus();
                     
                     if(document.getElementById('script-url-input')) {
                         document.getElementById('script-url-input').value = appConfig.scriptUrl;
@@ -1204,9 +1225,17 @@ function doPost(e) {
                 const response = await fetch(appConfig.scriptUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `action=login&api_key=${APP_API_KEY}&username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`
+                    body: `action=login&api_key=${APP_API_KEY}&username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`,
+                    cache: 'no-store'
                 });
-                const data = await response.json();
+                
+                const textData = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(textData);
+                } catch(e) {
+                    throw new Error("Pastikan Akses Deployment Apps Script telah diatur ke 'Anyone'.");
+                }
                 
                 if(data.result === 'success') {
                     currentUser = data.user;
@@ -1222,7 +1251,7 @@ function doPost(e) {
                     showToast(data.message || "Username atau Password salah!", "error");
                 }
             } catch(e) {
-                showToast("Gagal terhubung ke server.", "error");
+                customAlert("Akses Terblokir", "Gagal Login. " + e.message, "error");
             }
             
             btn.disabled = false;
@@ -1329,7 +1358,7 @@ function doPost(e) {
                     
                     if(window.innerWidth < 1024) toggleCart();
                     
-                    customAlert("Pesanan Terkirim!", "Pesanan telah masuk ke Kasir. Mohon tunggu sesaat hingga Kasir mengkonfirmasi pesanan Anda. Tutup pesan ini jika Anda ingin memesan lagi.", "success");
+                    customAlert("Pesanan Terkirim!", "Pesanan telah masuk ke Kasir. Mohon tunggu sesaat hingga Kasir mengkonfirmasi pesanan Anda.", "success");
                     
                 } catch(e) {
                     showToast("Gagal mengirim pesanan. Periksa internet Anda.", "error");
@@ -1338,29 +1367,122 @@ function doPost(e) {
                 showToast("Sistem Kasir belum online.", "error");
             }
             
-            checkoutBtn.disabled = cart.length === 0;
-            if(cart.length === 0) checkoutBtn.classList.add('opacity-50');
-            else checkoutBtn.classList.remove('opacity-50');
-            
+            checkoutBtn.disabled = false;
             checkoutBtn.innerHTML = '<span class="relative z-10"><i class="fa-solid fa-paper-plane mr-1"></i> Kirim Pesanan</span>';
         }
 
+        // FUNGSI INTI: INDIKATOR STATUS ASLI
+        function updateConnectionStatus(state = 'checking') {
+            if(isSelfOrderMode) return; // Pelanggan tak perlu lihat ini
+            
+            const statusEl = document.getElementById('connection-status');
+            if (!appConfig.scriptUrl) {
+                statusEl.innerHTML = `<div class="w-1.5 h-1.5 rounded-full bg-slate-400"></div> <span class="text-slate-500 hidden sm:inline">Belum Diatur</span>`;
+            } else if (state === 'checking') {
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin text-amber-500"></i> <span class="text-amber-600 hidden sm:inline">Memeriksa...</span>`;
+            } else if (state === 'connected') {
+                statusEl.innerHTML = `<div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></div> <span class="text-emerald-600 hidden sm:inline font-bold">Terhubung</span>`;
+            } else if (state === 'error') {
+                statusEl.innerHTML = `<div class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div> <span class="text-red-500 hidden sm:inline font-bold">Terputus</span>`;
+            }
+        }
+
+        async function fetchInitialData() {
+            const loader = document.getElementById('product-loading');
+            loader.classList.remove('hidden'); loader.classList.add('flex');
+
+            if (!appConfig.scriptUrl) {
+                loader.classList.add('hidden'); loader.classList.remove('flex');
+                if(!isSelfOrderMode) {
+                    customAlert("Database Belum Diatur", "Silakan atur URL Web App (Cloud) di menu Pengaturan terlebih dahulu.", "error");
+                }
+                document.getElementById('products-grid').innerHTML = `<div class="col-span-full text-center py-10 text-slate-500 font-medium text-xs md:text-sm w-full"><i class="fa-solid fa-cloud-arrow-down text-3xl mb-3 text-slate-300"></i><br>Database Belum Diatur</div>`;
+                updateConnectionStatus('error');
+                return;
+            }
+
+            try {
+                // Menambahkan _=Date.now() dan cache:no-store untuk 100% memecah Cache Chrome
+                const response = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`, { cache: 'no-store' });
+                
+                if(!response.ok) throw new Error('Gagal menghubungkan ke server.');
+                
+                const textData = await response.text();
+                let data;
+                
+                try {
+                    data = JSON.parse(textData);
+                } catch(e) {
+                    throw new Error("Akses Ditolak oleh Google! Pastikan Deployment Apps Script kamu diatur untuk 'Who has access: Anyone' (Siapa Saja). Saat ini Google memblokirnya ke halaman Login.");
+                }
+                
+                if(data.status === 'success') {
+                    updateConnectionStatus('connected');
+                    
+                    products = (data.products || []).map(p => ({
+                        id: String(p.id), nama: String(p.nama), kategori: String(p.kategori), 
+                        harga: parseInt(p.harga)||0, gambar: String(p.gambar||'')
+                    }));
+                    
+                    categories = (data.categories || []).map(c => ({ id: String(c.id), nama: String(c.nama) }));
+                    
+                    activeOrders = (data.hold_bills || []).map(h => ({
+                        id: h.id, 
+                        orderType: h.order_type, 
+                        table: (h.table_num ? parseInt(h.table_num) : null), 
+                        total: parseInt(h.total)||0, 
+                        timestamp: h.timestamp, 
+                        cart: JSON.parse(h.cart || '[]')
+                    }));
+
+                    transactionHistory = (data.transactions || []).map(t => ({
+                        id: t.id_transaksi,
+                        date: t.tanggal,
+                        total: parseInt(t.total_belanja)||0,
+                        paymentMethod: (t.tipe_pesanan || '').split(' - ').pop(), 
+                        orderType: t.tipe_pesanan,
+                        itemsRaw: t.items 
+                    })).reverse(); 
+
+                } else throw new Error(data.message);
+
+            } catch (error) {
+                console.error(error);
+                updateConnectionStatus('error');
+                if(!isSelfOrderMode) {
+                    customAlert("Gagal Menyinkronkan Server", error.message, "error");
+                }
+            } finally {
+                loader.classList.add('hidden'); loader.classList.remove('flex');
+                renderCategories(); 
+                renderProducts();
+                updateActiveOrdersBadge();
+            }
+        }
+
+        // POLLING OTOMATIS: ANTI NYANGKUT
         function startAdminPolling() {
             pollingInterval = setInterval(async () => {
                 if(!appConfig.scriptUrl) return;
                 try {
-                    const response = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
+                    const response = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`, { cache: 'no-store' });
                     if(!response.ok) return;
-                    const data = await response.json();
+                    
+                    const textData = await response.text();
+                    let data;
+                    try { 
+                        data = JSON.parse(textData); 
+                    } catch(e) { 
+                        updateConnectionStatus('error'); 
+                        return; // Berhenti memproses jika terblokir HTML
+                    }
                     
                     if(data.status === 'success') {
+                        updateConnectionStatus('connected');
+                        
                         const incomingOrders = (data.hold_bills || []).map(h => ({
-                            id: h.id, 
-                            orderType: h.order_type, 
-                            table: (h.table_num ? parseInt(h.table_num) : null), 
-                            total: parseInt(h.total)||0, 
-                            timestamp: h.timestamp, 
-                            cart: JSON.parse(h.cart || '[]')
+                            id: h.id, orderType: h.order_type, table: (h.table_num ? parseInt(h.table_num) : null), 
+                            total: parseInt(h.total)||0, timestamp: h.timestamp, cart: JSON.parse(h.cart || '[]')
                         }));
                         
                         const selfOrders = incomingOrders.filter(o => o.id.startsWith('SLF-'));
@@ -1384,24 +1506,17 @@ function doPost(e) {
                         }
 
                         const finalActiveOrders = incomingOrders.filter(o => !unconfirmedOrders.find(uo => uo.id === o.id));
-                        
                         if (JSON.stringify(activeOrders) !== JSON.stringify(finalActiveOrders)) {
                             activeOrders = finalActiveOrders;
                             updateActiveOrdersBadge();
-                            if(!document.getElementById('active-orders-modal').classList.contains('hidden')) {
-                                renderActiveOrders();
-                            }
+                            if(!document.getElementById('active-orders-modal').classList.contains('hidden')) renderActiveOrders();
                             if(!document.getElementById('table-modal').classList.contains('hidden')) renderTables();
                         }
                         
                         if (data.transactions) {
                             const newHistory = (data.transactions || []).map(t => ({
-                                id: t.id_transaksi,
-                                date: t.tanggal,
-                                total: parseInt(t.total_belanja)||0,
-                                paymentMethod: (t.tipe_pesanan || '').split(' - ').pop(), 
-                                orderType: t.tipe_pesanan,
-                                itemsRaw: t.items 
+                                id: t.id_transaksi, date: t.tanggal, total: parseInt(t.total_belanja)||0,
+                                paymentMethod: (t.tipe_pesanan || '').split(' - ').pop(), orderType: t.tipe_pesanan, itemsRaw: t.items 
                             })).reverse();
                             
                             if(JSON.stringify(transactionHistory) !== JSON.stringify(newHistory)) {
@@ -1417,8 +1532,7 @@ function doPost(e) {
                             }));
                             if(JSON.stringify(products) !== JSON.stringify(newProducts)) {
                                 products = newProducts;
-                                renderCategories(); 
-                                renderProducts(document.getElementById('search-input').value);
+                                renderCategories(); renderProducts(document.getElementById('search-input').value);
                             }
                         }
 
@@ -1433,6 +1547,7 @@ function doPost(e) {
                     }
                 } catch(e) {
                     console.warn("Silent polling failed", e);
+                    updateConnectionStatus('error');
                 }
             }, 5000); 
         }
@@ -1631,73 +1746,6 @@ function doPost(e) {
                 modal.classList.add('hidden'); 
                 if(callback) callback();
             }, 300);
-        }
-
-        function updateConnectionStatus() {
-            const statusEl = document.getElementById('connection-status');
-            if (!appConfig.scriptUrl) {
-                statusEl.innerHTML = `<div class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div> <span class="text-slate-600 hidden sm:inline">Belum Terhubung</span>`;
-            } else {
-                statusEl.innerHTML = `<div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> <span class="text-slate-600 hidden sm:inline">Terhubung</span>`;
-            }
-        }
-
-        async function fetchInitialData() {
-            const loader = document.getElementById('product-loading');
-            loader.classList.remove('hidden'); loader.classList.add('flex');
-
-            if (!appConfig.scriptUrl) {
-                loader.classList.add('hidden'); loader.classList.remove('flex');
-                if(!isSelfOrderMode) {
-                    customAlert("Database Belum Diatur", "Harap atur URL Google Apps Script Anda di menu Pengaturan (Cloud) agar sistem dapat digunakan sepenuhnya.", "info");
-                }
-                document.getElementById('products-grid').innerHTML = `<div class="col-span-full text-center py-10 text-slate-500 font-medium text-xs md:text-sm w-full"><i class="fa-solid fa-cloud-arrow-down text-3xl mb-3 text-slate-300"></i><br>Database Belum Diatur</div>`;
-                return;
-            }
-
-            try {
-                const response = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
-                if(!response.ok) throw new Error('Gagal menghubungkan ke server.');
-                
-                const data = await response.json();
-                
-                if(data.status === 'success') {
-                    products = (data.products || []).map(p => ({
-                        id: String(p.id), nama: String(p.nama), kategori: String(p.kategori), 
-                        harga: parseInt(p.harga)||0, gambar: String(p.gambar||'')
-                    }));
-                    
-                    categories = (data.categories || []).map(c => ({ id: String(c.id), nama: String(c.nama) }));
-                    
-                    activeOrders = (data.hold_bills || []).map(h => ({
-                        id: h.id, 
-                        orderType: h.order_type, 
-                        table: (h.table_num ? parseInt(h.table_num) : null), 
-                        total: parseInt(h.total)||0, 
-                        timestamp: h.timestamp, 
-                        cart: JSON.parse(h.cart || '[]')
-                    }));
-
-                    transactionHistory = (data.transactions || []).map(t => ({
-                        id: t.id_transaksi,
-                        date: t.tanggal,
-                        total: parseInt(t.total_belanja)||0,
-                        paymentMethod: (t.tipe_pesanan || '').split(' - ').pop(), 
-                        orderType: t.tipe_pesanan,
-                        itemsRaw: t.items 
-                    })).reverse(); 
-
-                } else throw new Error(data.message);
-
-            } catch (error) {
-                console.error(error);
-                showToast("Gagal menyinkronisasi dengan Server.", "error");
-            } finally {
-                loader.classList.add('hidden'); loader.classList.remove('flex');
-                renderCategories(); 
-                renderProducts();
-                updateActiveOrdersBadge();
-            }
         }
 
         function openCategoryModal() {
@@ -3001,9 +3049,12 @@ function doPost(e) {
                 if (pendingOrders.length === 0) return;
 
                 try {
-                    const res = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
+                    const res = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`, { cache: 'no-store' });
                     if(!res.ok) return;
-                    const data = await res.json();
+                    
+                    const textData = await res.text();
+                    let data;
+                    try { data = JSON.parse(textData); } catch(e) { return; }
                     
                     if(data.status === 'success') {
                         let isUpdated = false;
