@@ -57,6 +57,7 @@
         /* EASING SMOOTH */
         .ease-premium { transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1) !important; }
 
+        /* STREAMING_CHUNK:Styling list view compact mode... -->
         /* LIST VIEW STYLE COMPACT */
         .list-view {
             display: flex !important;
@@ -108,6 +109,7 @@
         body.force-split-view #cart-overlay { display: none !important; }
         body.force-split-view #close-cart-btn { display: none !important; }
 
+        /* STREAMING_CHUNK:Styling specific modes like self-order and print... -->
         /* MODE SELF-ORDER (PELANGGAN) SECURITY OVERRIDES */
         body.self-order-mode #main-sidebar { display: none !important; }
         body.self-order-mode #sidebar-overlay { display: none !important; }
@@ -195,7 +197,8 @@
 
         <!-- BAGIAN ADMIN (Akan disembunyikan saat mode Pelanggan) -->
         <div class="flex items-center gap-1.5 md:gap-3" id="admin-header-actions">
-            <button id="new-order-alert-btn" onclick="showNextIncomingOrder()" class="hidden h-8 px-3 flex items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors duration-300 border border-red-600 active:scale-95 animate-pulse shadow-md shadow-red-500/30 gap-1.5 font-bold text-xs" title="Ada Pesanan Baru">
+            <!-- FIX: Diperbarui onclick-nya menjadi openIncomingQueueModal -->
+            <button id="new-order-alert-btn" onclick="openIncomingQueueModal()" class="hidden h-8 px-3 flex items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors duration-300 border border-red-600 active:scale-95 animate-pulse shadow-md shadow-red-500/30 gap-1.5 font-bold text-xs" title="Ada Pesanan Baru">
                 <i class="fa-solid fa-bell animate-ring"></i> <span id="new-order-alert-text">Pesanan Baru</span>
             </button>
 
@@ -2875,23 +2878,12 @@ function doPost(e) {
             setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
         }
 
-        let qrSelectedTable = null;
-
         function openQRModal() {
             if(!appConfig.scriptUrl) {
-                customAlert("Database Belum Diatur", "Silakan atur URL Web App (Google Apps Script) di menu 'Pengaturan Database' terlebih dahulu agar sistem QR Code dapat menghubungkan pelanggan dengan server Anda.", "error");
+                showToast("Atur URL Database Cloud terlebih dahulu sebelum menggunakan QR Code.", "error");
                 return;
             }
-            
-            qrSelectedTable = null;
-            const displaySection = document.getElementById('qr-code-display-section');
-            if(displaySection) {
-                displaySection.classList.add('hidden');
-                displaySection.classList.remove('flex');
-            }
-            
-            renderQRTableGrid(); 
-            
+            renderQRTableOptions(); generateQRCode(); 
             const modal = document.getElementById('qr-modal');
             const content = document.getElementById('qr-modal-content');
             modal.classList.remove('hidden');
@@ -2900,7 +2892,7 @@ function doPost(e) {
                 content.classList.remove('scale-95'); content.classList.add('scale-100');
             });
         }
-
+        
         function closeQRModal() {
             const modal = document.getElementById('qr-modal');
             const content = document.getElementById('qr-modal-content');
@@ -2909,50 +2901,17 @@ function doPost(e) {
             setTimeout(() => modal.classList.add('hidden'), 500);
         }
         
-        function renderQRTableGrid() {
-            const container = document.getElementById('qr-table-grid');
-            if(!container) return;
-            let html = '';
-            
-            const isGeneralSelected = qrSelectedTable === 'general';
-            html += `<button onclick="selectQRTable('general')" class="col-span-4 py-2 mb-1 rounded-lg border font-bold text-[11px] transition-all duration-300 active:scale-95 ${isGeneralSelected ? 'bg-teal-600 text-white border-teal-700 shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">
-                        Bungkus / Take Away (Umum)
-                     </button>`;
-
-            for(let i=1; i<=16; i++) {
-                const isOccupied = activeOrders.some(o => o.orderType === 'Dine In' && o.table === i);
-                const isSelected = qrSelectedTable === i;
-                
-                let btnClass = "bg-white text-slate-700 border-slate-200 hover:border-teal-300 hover:bg-teal-50 shadow-sm"; 
-                if(isOccupied) btnClass = "bg-amber-100 text-amber-700 border-amber-300 shadow-sm";
-                if(isSelected) btnClass = "bg-teal-600 text-white border-transparent shadow-md transform scale-105"; 
-                
-                html += `<button onclick="selectQRTable(${i})" class="py-2 rounded-xl border font-bold text-sm transition-all duration-300 active:scale-95 relative ${btnClass}">
-                           ${i}
-                           ${isOccupied ? `<span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-sm"></span>` : ''}
-                        </button>`;
-            }
-            container.innerHTML = html;
-        }
-
-        function selectQRTable(table) {
-            qrSelectedTable = table;
-            renderQRTableGrid();
-            
-            const displaySection = document.getElementById('qr-code-display-section');
-            displaySection.classList.remove('hidden');
-            displaySection.classList.add('flex');
-            
-            if(table === 'general') document.getElementById('qr-table-label').innerText = "QR Umum (Take Away)";
-            else document.getElementById('qr-table-label').innerText = `QR Meja ${table}`;
-            
-            generateQRCode();
+        function renderQRTableOptions() {
+            const select = document.getElementById('qr-table-select');
+            let html = '<option value="general">Umum / Kasir (Take Away)</option>';
+            for(let i=1; i<=16; i++) { html += `<option value="${i}">Meja ${i}</option>`; }
+            select.innerHTML = html;
         }
 
         function regenerateQR() {
-            if(!qrSelectedTable) return;
+            const table = document.getElementById('qr-table-select').value;
             const newToken = Math.random().toString(36).substring(2, 10);
-            tableTokens[qrSelectedTable] = newToken;
+            tableTokens[table] = newToken;
             localStorage.setItem('pos_table_tokens', JSON.stringify(tableTokens));
             
             showToast("QR Code diperbarui! QR yang difoto pelanggan sebelumnya akan kadaluarsa.", "success");
@@ -2960,8 +2919,7 @@ function doPost(e) {
         }
         
         function generateQRCode() {
-            if(!qrSelectedTable) return;
-            const table = qrSelectedTable;
+            const table = document.getElementById('qr-table-select').value;
             
             if(!tableTokens[table]) {
                 tableTokens[table] = Math.random().toString(36).substring(2, 10);
@@ -2972,10 +2930,6 @@ function doPost(e) {
             const baseUrl = window.location.href.split('?')[0].split('#')[0]; 
             const dbUrl = encodeURIComponent(appConfig.scriptUrl); 
             const finalUrl = `${baseUrl}?mode=selforder&table=${table}&db=${dbUrl}&t=${token}`;
-
-            if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                showToast("PERINGATAN: Berjalan di lokal! QR Code tidak bisa di-scan dari HP pelanggan.", "error");
-            }
             
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(finalUrl)}&margin=10`;
             document.getElementById('qr-image').src = qrUrl;
@@ -3002,8 +2956,7 @@ function doPost(e) {
         }
         
         function printQRCode() {
-            if(!qrSelectedTable) return;
-            const table = qrSelectedTable;
+            const table = document.getElementById('qr-table-select').value;
             const qrSrc = document.getElementById('qr-image').src;
             const title = table === 'general' ? 'SCAN & PESAN' : `MEJA ${table}`;
             const subtitle = table === 'general' ? 'Pesan & Bayar dari HP' : 'Scan untuk memesan dari meja Anda';
@@ -3051,6 +3004,45 @@ function doPost(e) {
             printArea.innerHTML = receiptHtml; printArea.classList.remove('hidden');
             window.print();
             setTimeout(() => { printArea.classList.add('hidden'); printArea.innerHTML = ''; }, 1000);
+        }
+
+        function startCustomerPolling() {
+            if (!isSelfOrderMode || !appConfig.scriptUrl) return;
+            
+            customerPollingInterval = setInterval(async () => {
+                let pendingOrders = mySelfOrders.filter(o => o.status === 'Menunggu');
+                if (pendingOrders.length === 0) return;
+
+                try {
+                    const res = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
+                    if(!res.ok) return;
+                    const data = await res.json();
+                    
+                    if(data.status === 'success') {
+                        let isUpdated = false;
+                        mySelfOrders.forEach(myOrder => {
+                            if(myOrder.status === 'Menunggu') {
+                                const stillExists = data.hold_bills.find(h => h.id === myOrder.id);
+                                if(!stillExists) {
+                                    myOrder.status = 'Selesai';
+                                    isUpdated = true;
+                                }
+                            }
+                        });
+                        
+                        if(isUpdated) {
+                            localStorage.setItem('pos_my_orders', JSON.stringify(mySelfOrders));
+                            updateCustomerStatusBadge();
+                            if(!document.getElementById('customer-status-modal').classList.contains('hidden')) {
+                                renderCustomerStatus();
+                            }
+                            showToast("Pembaruan: Kasir telah menerima pesanan Anda!", "success");
+                        }
+                    }
+                } catch(e) {
+                    console.warn("Customer polling failed", e);
+                }
+            }, 3000); 
         }
 
         function updateCustomerStatusBadge() {
@@ -3118,45 +3110,6 @@ function doPost(e) {
                     </div>
                 `;
             }).join('');
-        }
-
-        function startCustomerPolling() {
-            if (!isSelfOrderMode || !appConfig.scriptUrl) return;
-            
-            customerPollingInterval = setInterval(async () => {
-                let pendingOrders = mySelfOrders.filter(o => o.status === 'Menunggu');
-                if (pendingOrders.length === 0) return;
-
-                try {
-                    const res = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
-                    if(!res.ok) return;
-                    const data = await res.json();
-                    
-                    if(data.status === 'success') {
-                        let isUpdated = false;
-                        mySelfOrders.forEach(myOrder => {
-                            if(myOrder.status === 'Menunggu') {
-                                const stillExists = data.hold_bills.find(h => h.id === myOrder.id);
-                                if(!stillExists) {
-                                    myOrder.status = 'Selesai';
-                                    isUpdated = true;
-                                }
-                            }
-                        });
-                        
-                        if(isUpdated) {
-                            localStorage.setItem('pos_my_orders', JSON.stringify(mySelfOrders));
-                            updateCustomerStatusBadge();
-                            if(!document.getElementById('customer-status-modal').classList.contains('hidden')) {
-                                renderCustomerStatus();
-                            }
-                            showToast("Pembaruan: Kasir telah menerima pesanan Anda!", "success");
-                        }
-                    }
-                } catch(e) {
-                    console.warn("Customer polling failed", e);
-                }
-            }, 3000); 
         }
 
         window.onload = initializeApp;
