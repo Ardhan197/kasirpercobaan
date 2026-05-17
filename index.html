@@ -57,7 +57,6 @@
         /* EASING SMOOTH */
         .ease-premium { transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1) !important; }
 
-        /* STREAMING_CHUNK:Styling list view compact mode... -->
         /* LIST VIEW STYLE COMPACT */
         .list-view {
             display: flex !important;
@@ -87,6 +86,7 @@
         .list-view .product-card .info-text { flex: 1; }
         .list-view .product-card .list-add-btn { display: flex !important; }
 
+        /* STREAMING_CHUNK:Styling view overrides... -->
         /* SPLIT VIEW COMPACT OVERRIDES */
         body.force-split-view main { flex-direction: row !important; }
         body.force-split-view #cart-sidebar {
@@ -109,7 +109,6 @@
         body.force-split-view #cart-overlay { display: none !important; }
         body.force-split-view #close-cart-btn { display: none !important; }
 
-        /* STREAMING_CHUNK:Styling specific modes like self-order and print... -->
         /* MODE SELF-ORDER (PELANGGAN) SECURITY OVERRIDES */
         body.self-order-mode #main-sidebar { display: none !important; }
         body.self-order-mode #sidebar-overlay { display: none !important; }
@@ -197,7 +196,7 @@
 
         <!-- BAGIAN ADMIN (Akan disembunyikan saat mode Pelanggan) -->
         <div class="flex items-center gap-1.5 md:gap-3" id="admin-header-actions">
-            <!-- FIX: Diperbarui onclick-nya menjadi openIncomingQueueModal -->
+            <!-- TOmbol Lonceng Notifikasi Pesanan Masuk -->
             <button id="new-order-alert-btn" onclick="openIncomingQueueModal()" class="hidden h-8 px-3 flex items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors duration-300 border border-red-600 active:scale-95 animate-pulse shadow-md shadow-red-500/30 gap-1.5 font-bold text-xs" title="Ada Pesanan Baru">
                 <i class="fa-solid fa-bell animate-ring"></i> <span id="new-order-alert-text">Pesanan Baru</span>
             </button>
@@ -653,7 +652,7 @@
         </div>
     </div>
 
-    <!-- Modal Review Pesanan Spesifik (Dari Antrean) -->
+    <!-- Modal Konfirmasi Pesanan Baru (Untuk Kasir) -->
     <div id="incoming-order-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[200] hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden transform scale-95 transition-all duration-300" id="incoming-order-content">
             <div class="bg-red-500 p-5 text-center relative overflow-hidden">
@@ -689,62 +688,6 @@
             <div class="p-4 bg-white border-t border-slate-100 flex gap-3">
                 <button onclick="rejectIncomingOrder()" class="w-1/3 py-3 bg-white border-2 border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all duration-300">Tolak</button>
                 <button onclick="acceptIncomingOrder()" class="w-2/3 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-extrabold rounded-xl hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/40 transition-all duration-300 flex items-center justify-center gap-2 text-sm"><i class="fa-solid fa-check-double"></i> Ya, Terima Pesanan</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Status Pesanan (Untuk Pelanggan) -->
-    <div id="customer-status-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[400px] max-h-[85vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="customer-status-content">
-            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-                <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
-                    <div class="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 text-xs"><i class="fa-solid fa-clock-rotate-left"></i></div>
-                    Status Pesanan Saya
-                </h3>
-                <button onclick="closeCustomerStatusModal()" class="w-7 h-7 flex items-center justify-center rounded-full bg-white hover:bg-slate-200 text-slate-500 transition-colors shadow-sm border border-slate-200 active:scale-90"><i class="fa-solid fa-xmark text-sm"></i></button>
-            </div>
-            
-            <div class="p-4 flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar">
-                <p class="text-[10px] text-slate-500 text-center mb-4">Daftar pesanan Anda. Tutup pop-up ini untuk memilih dan memesan tambahan menu.</p>
-                <div id="customer-status-list" class="flex flex-col gap-3">
-                    <!-- Dimuat JS -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal View Settings -->
-    <div id="view-settings-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[320px] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="view-settings-content">
-            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center shrink-0">
-                <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
-                    <div class="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center text-slate-700 text-xs border border-slate-200"><i class="fa-solid fa-desktop"></i></div>
-                    Tampilan
-                </h3>
-                <button onclick="closeViewSettings()" class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-200 text-slate-500 transition-colors duration-300 active:scale-90"><i class="fa-solid fa-xmark text-sm"></i></button>
-            </div>
-            <div class="p-4 flex-1 bg-slate-50/50 space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-800 mb-2">Model Daftar Menu</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button id="btn-view-grid" onclick="setViewType('grid')" class="py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs">
-                            <i class="fa-solid fa-border-all text-sm"></i> Grid
-                        </button>
-                        <button id="btn-view-list" onclick="setViewType('list')" class="py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs">
-                            <i class="fa-solid fa-list text-sm"></i> List
-                        </button>
-                    </div>
-                </div>
-                <div id="grid-columns-settings" class="transition-all duration-300">
-                    <label class="block text-xs font-bold text-slate-800 mb-2">Kolom Grid (Kiri ke Kanan)</label>
-                    <div class="flex items-center gap-3 bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
-                        <input type="range" id="grid-columns-range" min="1" max="6" value="3" class="w-full accent-emerald-500 h-1.5" oninput="updateGridColumnsDisplay()">
-                        <span id="grid-columns-val" class="font-bold text-sm text-slate-900 w-5 text-center">3</span>
-                    </div>
-                </div>
-            </div>
-            <div class="p-3 bg-white border-t border-slate-100 flex justify-end shrink-0">
-                <button onclick="closeViewSettings()" class="w-full py-2 text-sm bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-bold rounded-lg shadow-btn transition-all duration-300 active:scale-95">Selesai</button>
             </div>
         </div>
     </div>
@@ -1042,8 +985,7 @@ function doPost(e) {
     <div id="print-receipt-area" class="hidden"></div>
 
     <script>
-        const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYR5t6e7XdzmdzZ1e84N60WaLmwWSbOG4x3E30TXPMNFLSMnRSIvuLpwzfJ4nhMrk4/exec'; 
-        const APP_API_KEY = 'SMARTPOS_SECURE_2024';
+        const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYR5t6e7XdzmdzZ1e84N60WaLmwWSbOG4x3E30TXPMNFLSMnRSIvuLpwzfJ4nhMrk4/exec';
         
         let currentUser = null; 
 
@@ -1063,18 +1005,21 @@ function doPost(e) {
         
         let isSelfOrderMode = false;
         let pollingInterval = null; 
+        
+        let qrSelectedTable = null; // Menyimpan status meja yang sedang dipilih pada modal QR
 
-        // Variables Customer Status (Safe Parsing)
-        let mySelfOrders = [];
-        try { mySelfOrders = JSON.parse(localStorage.getItem('pos_my_orders') || '[]'); } catch(e) { mySelfOrders = []; }
-        let customerPollingInterval = null;
-
-        // Variables for Gatekeeper (Safe Parsing)
+        // Variables for Gatekeeper (Pesanan Masuk)
         let unconfirmedOrders = [];
         let acknowledgedOrders = [];
         try { acknowledgedOrders = JSON.parse(localStorage.getItem('pos_ack_orders') || '[]'); } catch(e) { acknowledgedOrders = []; }
+        
         let tableTokens = {};
         try { tableTokens = JSON.parse(localStorage.getItem('pos_table_tokens') || '{}'); } catch(e) { tableTokens = {}; }
+        
+        // Variables for Customer Status
+        let mySelfOrders = [];
+        try { mySelfOrders = JSON.parse(localStorage.getItem('pos_my_orders') || '[]'); } catch(e) { mySelfOrders = []; }
+        let customerPollingInterval = null;
 
         let savedUrl = localStorage.getItem('pos_script_url');
         let appConfig = { scriptUrl: savedUrl || DEFAULT_SCRIPT_URL };
@@ -1192,6 +1137,10 @@ function doPost(e) {
                 const loginScreen = document.getElementById('login-screen');
                 loginScreen.style.transition = 'none'; 
                 loginScreen.style.display = 'none';
+
+                if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                     customAlert("Peringatan Sistem Lokal", "Anda sedang membuka sistem ini secara lokal. Fitur QR Code tidak bisa di-scan oleh HP pelanggan kecuali file ini di-Hosting/Online-kan.", "error");
+                }
 
                 setupSelfOrderUI();
                 await fetchInitialData();
@@ -1349,55 +1298,51 @@ function doPost(e) {
             const { total } = calculateTotals(cart);
             const timestamp = new Date().toISOString();
             
-            if (!appConfig.scriptUrl) {
+            if (appConfig.scriptUrl) {
+                try {
+                    await sendToGas({ 
+                        action: 'saveHoldBill', 
+                        api_key: APP_API_KEY, 
+                        id: orderId, 
+                        order_type: orderType, 
+                        table_num: selectedTable === 'general' ? '' : selectedTable, 
+                        total: total, 
+                        timestamp: timestamp, 
+                        cart: JSON.stringify(cart) 
+                    });
+                    
+                    const newMyOrder = {
+                        id: orderId,
+                        date: timestamp,
+                        total: total,
+                        items: cart.map(c => `${c.qty}x ${c.product.nama}`).join(', '),
+                        status: 'Menunggu'
+                    };
+                    mySelfOrders.unshift(newMyOrder);
+                    localStorage.setItem('pos_my_orders', JSON.stringify(mySelfOrders));
+                    updateCustomerStatusBadge();
+
+                    showToast("Terkirim!", "success");
+                    
+                    cart = [];
+                    renderCart(); 
+                    
+                    if(window.innerWidth < 1024) toggleCart();
+                    
+                    customAlert("Pesanan Terkirim!", "Pesanan telah masuk ke Kasir. Mohon tunggu sesaat hingga Kasir mengkonfirmasi pesanan Anda. Tutup pesan ini jika Anda ingin memesan lagi.", "success");
+                    
+                } catch(e) {
+                    showToast("Gagal mengirim pesanan. Periksa internet Anda.", "error");
+                }
+            } else {
                 showToast("Sistem Kasir belum online.", "error");
-                checkoutBtn.disabled = false;
-                checkoutBtn.innerHTML = '<span class="relative z-10"><i class="fa-solid fa-paper-plane mr-1"></i> Kirim Pesanan</span>';
-                return;
             }
-
-            try {
-                await sendToGas({ 
-                    action: 'saveHoldBill', 
-                    api_key: APP_API_KEY, 
-                    id: orderId, 
-                    order_type: orderType, 
-                    table_num: selectedTable === 'general' ? '' : selectedTable, 
-                    total: total, 
-                    timestamp: timestamp, 
-                    cart: JSON.stringify(cart) 
-                });
-                
-                const newMyOrder = {
-                    id: orderId,
-                    date: timestamp,
-                    total: total,
-                    items: cart.map(c => `${c.qty}x ${c.product.nama}`).join(', '),
-                    status: 'Menunggu'
-                };
-                mySelfOrders.unshift(newMyOrder);
-                localStorage.setItem('pos_my_orders', JSON.stringify(mySelfOrders));
-                updateCustomerStatusBadge();
-
-                showToast("Terkirim!", "success");
-                
-                cart = [];
-                renderCart(); 
-                
-                if(window.innerWidth < 1024) toggleCart();
-                
-                customAlert("Pesanan Terkirim!", "Pesanan telah masuk ke Kasir. Mohon tunggu sesaat hingga Kasir mengkonfirmasi pesanan Anda.", "success");
-                
-            } catch(e) {
-                console.error(e);
-                showToast("Gagal mengirim pesanan. Periksa internet Anda.", "error");
-            } finally {
-                checkoutBtn.disabled = cart.length === 0;
-                if(cart.length === 0) checkoutBtn.classList.add('opacity-50');
-                else checkoutBtn.classList.remove('opacity-50');
-                
-                checkoutBtn.innerHTML = '<span class="relative z-10"><i class="fa-solid fa-paper-plane mr-1"></i> Kirim Pesanan</span>';
-            }
+            
+            checkoutBtn.disabled = cart.length === 0;
+            if(cart.length === 0) checkoutBtn.classList.add('opacity-50');
+            else checkoutBtn.classList.remove('opacity-50');
+            
+            checkoutBtn.innerHTML = '<span class="relative z-10"><i class="fa-solid fa-paper-plane mr-1"></i> Kirim Pesanan</span>';
         }
 
         function startAdminPolling() {
@@ -1409,7 +1354,6 @@ function doPost(e) {
                     const data = await response.json();
                     
                     if(data.status === 'success') {
-                        // 1. SYNC: Hold Bills & Antrean Masuk
                         const incomingOrders = (data.hold_bills || []).map(h => ({
                             id: h.id, 
                             orderType: h.order_type, 
@@ -1419,36 +1363,37 @@ function doPost(e) {
                             cart: JSON.parse(h.cart || '[]')
                         }));
                         
-                        // GATEKEEPER: Tangkap Self Orders yang belum dikonfirmasi
                         const selfOrders = incomingOrders.filter(o => o.id.startsWith('SLF-'));
                         const newlyArrived = selfOrders.filter(o => !acknowledgedOrders.includes(o.id));
                         
-                        let newlyAddedToQueue = false;
                         if(newlyArrived.length > 0) {
+                            let newlyAddedToQueue = false;
                             newlyArrived.forEach(no => {
                                 if(!unconfirmedOrders.find(uo => uo.id === no.id)) {
                                     unconfirmedOrders.push(no);
                                     newlyAddedToQueue = true;
                                 }
                             });
+                            
+                            if (newlyAddedToQueue) {
+                                updateIncomingOrderAlert();
+                                if(!document.getElementById('incoming-queue-modal').classList.contains('hidden')) {
+                                    renderIncomingQueue();
+                                }
+                            }
                         }
 
-                        updateIncomingOrderAlert();
-                        
-                        if (newlyAddedToQueue && !document.getElementById('incoming-queue-modal').classList.contains('hidden')) {
-                            renderIncomingQueue();
-                        }
-
-                        // Saring hanya order sah yang sudah masuk kasir
                         const finalActiveOrders = incomingOrders.filter(o => !unconfirmedOrders.find(uo => uo.id === o.id));
+                        
                         if (JSON.stringify(activeOrders) !== JSON.stringify(finalActiveOrders)) {
                             activeOrders = finalActiveOrders;
                             updateActiveOrdersBadge();
-                            if(!document.getElementById('active-orders-modal').classList.contains('hidden')) renderActiveOrders();
+                            if(!document.getElementById('active-orders-modal').classList.contains('hidden')) {
+                                renderActiveOrders();
+                            }
                             if(!document.getElementById('table-modal').classList.contains('hidden')) renderTables();
                         }
-
-                        // 2. SYNC: Transaksi Harian
+                        
                         if (data.transactions) {
                             const newHistory = (data.transactions || []).map(t => ({
                                 id: t.id_transaksi,
@@ -1465,7 +1410,6 @@ function doPost(e) {
                             }
                         }
 
-                        // 3. SYNC: Menu Produk
                         if (data.products) {
                             const newProducts = (data.products || []).map(p => ({
                                 id: String(p.id), nama: String(p.nama), kategori: String(p.kategori), 
@@ -1478,7 +1422,6 @@ function doPost(e) {
                             }
                         }
 
-                        // 4. SYNC: Kategori
                         if (data.categories) {
                             const newCats = (data.categories || []).map(c => ({ id: String(c.id), nama: String(c.nama) }));
                             if (JSON.stringify(categories) !== JSON.stringify(newCats)) {
@@ -1618,7 +1561,7 @@ function doPost(e) {
                             await sendToGas({ action: 'saveHoldBill', api_key: APP_API_KEY, id: exOrder.id, order_type: exOrder.orderType, table_num: exOrder.table || '', total: exOrder.total, timestamp: exOrder.timestamp, cart: JSON.stringify(exOrder.cart) });
                             
                             isMerged = true;
-                            showToast(`Pesanan otomatis ditambahkan ke Meja ${order.table}`, "success");
+                            showToast(`Pesanan tambahan digabungkan ke Meja ${order.table}`, "success");
                         }
                     }
                     
@@ -1626,7 +1569,7 @@ function doPost(e) {
                         order.id = order.id.replace('SLF-', 'HLD-');
                         activeOrders.push(order);
                         await sendToGas({ action: 'saveHoldBill', api_key: APP_API_KEY, id: order.id, order_type: order.orderType, table_num: order.table || '', total: order.total, timestamp: order.timestamp, cart: JSON.stringify(order.cart) });
-                        showToast("Pesanan Diterima", "success");
+                        showToast("Pesanan Baru Diterima", "success");
                     }
                 } catch(e) {
                     console.error("Gagal sinkron", e);
@@ -1705,7 +1648,9 @@ function doPost(e) {
 
             if (!appConfig.scriptUrl) {
                 loader.classList.add('hidden'); loader.classList.remove('flex');
-                if(!isSelfOrderMode) showToast("Silakan atur URL Database (Cloud) di menu Sistem.", "error");
+                if(!isSelfOrderMode) {
+                    customAlert("Database Belum Diatur", "Harap atur URL Google Apps Script Anda di menu Pengaturan (Cloud) agar sistem dapat digunakan sepenuhnya.", "info");
+                }
                 document.getElementById('products-grid').innerHTML = `<div class="col-span-full text-center py-10 text-slate-500 font-medium text-xs md:text-sm w-full"><i class="fa-solid fa-cloud-arrow-down text-3xl mb-3 text-slate-300"></i><br>Database Belum Diatur</div>`;
                 return;
             }
@@ -2880,10 +2825,16 @@ function doPost(e) {
 
         function openQRModal() {
             if(!appConfig.scriptUrl) {
-                showToast("Atur URL Database Cloud terlebih dahulu sebelum menggunakan QR Code.", "error");
+                customAlert("Gagal Membuka", "Atur URL Database Cloud terlebih dahulu di menu pengaturan Sistem untuk menggunakan fitur QR Code.", "error");
                 return;
             }
-            renderQRTableOptions(); generateQRCode(); 
+            
+            document.getElementById('qr-table-grid').classList.remove('hidden');
+            document.getElementById('qr-code-display-section').classList.add('hidden');
+            document.getElementById('qr-code-display-section').classList.remove('flex');
+            
+            renderQRGrid(); 
+            
             const modal = document.getElementById('qr-modal');
             const content = document.getElementById('qr-modal-content');
             modal.classList.remove('hidden');
@@ -2892,24 +2843,57 @@ function doPost(e) {
                 content.classList.remove('scale-95'); content.classList.add('scale-100');
             });
         }
-        
+
         function closeQRModal() {
             const modal = document.getElementById('qr-modal');
             const content = document.getElementById('qr-modal-content');
             modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
             content.classList.remove('scale-100'); content.classList.add('scale-95');
-            setTimeout(() => modal.classList.add('hidden'), 500);
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.getElementById('qr-table-grid').classList.remove('hidden');
+                document.getElementById('qr-code-display-section').classList.add('hidden');
+                document.getElementById('qr-code-display-section').classList.remove('flex');
+            }, 500);
         }
-        
-        function renderQRTableOptions() {
-            const select = document.getElementById('qr-table-select');
-            let html = '<option value="general">Umum / Kasir (Take Away)</option>';
-            for(let i=1; i<=16; i++) { html += `<option value="${i}">Meja ${i}</option>`; }
-            select.innerHTML = html;
+
+        function renderQRGrid() {
+            const container = document.getElementById('qr-table-grid');
+            if(!container) return;
+            
+            let html = `<button onclick="selectQRTable('general')" class="col-span-4 py-2.5 rounded-xl border border-slate-200 bg-white font-bold text-sm text-slate-700 hover:bg-slate-50 transition-all shadow-sm mb-1 active:scale-95">Umum / Take Away</button>`;
+            
+            for(let i=1; i<=16; i++) {
+                const isOccupied = activeOrders.some(o => o.orderType === 'Dine In' && o.table === i);
+                let btnClass = "bg-white text-slate-700 border-slate-200 hover:border-teal-300 hover:bg-teal-50"; 
+                
+                if(isOccupied) btnClass = "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100";
+                
+                html += `<button onclick="selectQRTable('${i}')" class="py-2.5 rounded-xl border font-bold text-sm transition-all duration-300 active:scale-95 relative shadow-sm ${btnClass}">
+                            ${i}
+                            ${isOccupied ? `<span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-sm"></span>` : ''}
+                         </button>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function selectQRTable(tableNum) {
+            qrSelectedTable = tableNum;
+            document.getElementById('qr-table-grid').classList.add('hidden');
+            
+            const displaySection = document.getElementById('qr-code-display-section');
+            displaySection.classList.remove('hidden');
+            displaySection.classList.add('flex');
+            
+            document.getElementById('qr-table-label').innerText = tableNum === 'general' ? 'QR Pelanggan Umum (Take Away)' : `QR Meja ${tableNum}`;
+            
+            generateQRCode();
         }
 
         function regenerateQR() {
-            const table = document.getElementById('qr-table-select').value;
+            const table = qrSelectedTable;
+            if(!table) return;
+            
             const newToken = Math.random().toString(36).substring(2, 10);
             tableTokens[table] = newToken;
             localStorage.setItem('pos_table_tokens', JSON.stringify(tableTokens));
@@ -2919,7 +2903,8 @@ function doPost(e) {
         }
         
         function generateQRCode() {
-            const table = document.getElementById('qr-table-select').value;
+            const table = qrSelectedTable;
+            if(!table) return;
             
             if(!tableTokens[table]) {
                 tableTokens[table] = Math.random().toString(36).substring(2, 10);
@@ -2956,7 +2941,9 @@ function doPost(e) {
         }
         
         function printQRCode() {
-            const table = document.getElementById('qr-table-select').value;
+            const table = qrSelectedTable;
+            if(!table) return;
+            
             const qrSrc = document.getElementById('qr-image').src;
             const title = table === 'general' ? 'SCAN & PESAN' : `MEJA ${table}`;
             const subtitle = table === 'general' ? 'Pesan & Bayar dari HP' : 'Scan untuk memesan dari meja Anda';
