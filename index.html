@@ -195,7 +195,7 @@
 
         <!-- BAGIAN ADMIN (Akan disembunyikan saat mode Pelanggan) -->
         <div class="flex items-center gap-1.5 md:gap-3" id="admin-header-actions">
-            <button id="new-order-alert-btn" onclick="openIncomingQueueModal()" class="hidden h-8 px-3 flex items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors duration-300 border border-red-600 active:scale-95 animate-pulse shadow-md shadow-red-500/30 gap-1.5 font-bold text-xs" title="Buka Antrean Pesanan Baru">
+            <button id="new-order-alert-btn" onclick="showNextIncomingOrder()" class="hidden h-8 px-3 flex items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors duration-300 border border-red-600 active:scale-95 animate-pulse shadow-md shadow-red-500/30 gap-1.5 font-bold text-xs" title="Ada Pesanan Baru">
                 <i class="fa-solid fa-bell animate-ring"></i> <span id="new-order-alert-text">Pesanan Baru</span>
             </button>
 
@@ -240,7 +240,7 @@
         <!-- BAGIAN PELANGGAN (Hanya muncul saat mode QR Scan) -->
         <button id="customer-status-btn" onclick="openCustomerStatusModal()" class="hidden items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm hover:bg-slate-50 transition-colors relative active:scale-95 ml-2">
             <i class="fa-solid fa-receipt text-emerald-600 text-sm"></i>
-            <span class="text-[10px] font-bold text-slate-700 hidden sm:inline">Status Pesanan Saya</span>
+            <span class="text-[10px] font-bold text-slate-700 hidden sm:inline">Status Pesanan</span>
             <span id="customer-status-badge" class="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white hidden animate-bounce">0</span>
         </button>
 
@@ -439,7 +439,7 @@
 
     <!-- Modal QR Self-Order -->
     <div id="qr-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[340px] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="qr-modal-content">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[380px] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="qr-modal-content">
             <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center shrink-0">
                 <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
                     <div class="w-7 h-7 bg-teal-50 rounded-lg flex items-center justify-center text-teal-600 text-xs border border-teal-100"><i class="fa-solid fa-qrcode"></i></div>
@@ -448,28 +448,31 @@
                 <button onclick="closeQRModal()" class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-200 text-slate-500 transition-colors duration-300 active:scale-90"><i class="fa-solid fa-xmark text-sm"></i></button>
             </div>
             
-            <div class="p-4 flex flex-col items-center bg-slate-50/50">
-                <p class="text-[10px] text-slate-500 text-center mb-3">Pelanggan memindai QR ini untuk melihat menu dan memesan dari HP.</p>
+            <div class="p-4 flex flex-col items-center bg-slate-50/50 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <p class="text-[10px] text-slate-500 text-center mb-3">Pilih Meja untuk membuat/menampilkan QR Code Pelanggan.</p>
                 
-                <div class="w-full mb-3">
-                    <select id="qr-table-select" class="w-full p-2 text-xs font-bold text-slate-700 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 bg-white cursor-pointer shadow-sm" onchange="generateQRCode()">
-                    </select>
+                <!-- GRID MEJA -->
+                <div id="qr-table-grid" class="grid grid-cols-4 gap-2 mb-4 w-full">
+                    <!-- Dimuat JS -->
                 </div>
 
-                <div class="p-3 bg-white border border-slate-200 rounded-xl shadow-sm mb-4 w-full flex justify-center" id="qr-code-container">
-                    <img id="qr-image" src="" alt="QR Code" class="w-40 h-40 object-contain">
-                </div>
-                
-                <div class="flex gap-2 w-full">
-                    <button onclick="regenerateQR()" class="flex-1 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 font-bold rounded-lg text-xs transition-colors flex justify-center items-center gap-1.5 active:scale-95 shadow-sm" title="Perbarui QR agar QR lama kadaluarsa">
-                        <i class="fa-solid fa-arrows-rotate"></i> Perbarui
-                    </button>
-                    <button onclick="printQRCode()" class="flex-1 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-colors flex justify-center items-center gap-1.5 active:scale-95 shadow-sm">
-                        <i class="fa-solid fa-print"></i> Cetak
-                    </button>
-                    <button onclick="fullscreenQR()" class="flex-1 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold rounded-lg text-xs transition-colors flex justify-center items-center gap-1.5 active:scale-95">
-                        <i class="fa-solid fa-expand"></i> Penuh
-                    </button>
+                <div id="qr-code-display-section" class="w-full hidden flex-col items-center border-t border-slate-200 pt-4">
+                    <p class="text-xs font-bold text-slate-800 mb-2" id="qr-table-label">Meja -</p>
+                    <div class="p-3 bg-white border border-slate-200 rounded-xl shadow-sm mb-4 w-full flex justify-center">
+                        <img id="qr-image" src="" alt="QR Code" class="w-40 h-40 object-contain">
+                    </div>
+                    
+                    <div class="flex gap-2 w-full">
+                        <button onclick="regenerateQR()" class="flex-1 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 font-bold rounded-lg text-[10px] transition-colors flex justify-center items-center gap-1.5 active:scale-95 shadow-sm" title="Perbarui QR agar QR lama kadaluarsa">
+                            <i class="fa-solid fa-arrows-rotate"></i> Perbarui
+                        </button>
+                        <button onclick="printQRCode()" class="flex-1 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg text-[10px] transition-colors flex justify-center items-center gap-1.5 active:scale-95 shadow-sm">
+                            <i class="fa-solid fa-print"></i> Cetak
+                        </button>
+                        <button onclick="fullscreenQR()" class="flex-1 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold rounded-lg text-[10px] transition-colors flex justify-center items-center gap-1.5 active:scale-95">
+                            <i class="fa-solid fa-expand"></i> Penuh
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1036,7 +1039,7 @@ function doPost(e) {
     <div id="print-receipt-area" class="hidden"></div>
 
     <script>
-        const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYR5t6e7XdzmdzZ1e84N60WaLmwWSbOG4x3E30TXPMNFLSMnRSIvuLpwzfJ4nhMrk4/exec; 
+        const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYR5t6e7XdzmdzZ1e84N60WaLmwWSbOG4x3E30TXPMNFLSMnRSIvuLpwzfJ4nhMrk4/exec'; 
         const APP_API_KEY = 'SMARTPOS_SECURE_2024';
         
         let currentUser = null; 
@@ -1058,14 +1061,17 @@ function doPost(e) {
         let isSelfOrderMode = false;
         let pollingInterval = null; 
 
-        // Variables Customer Status
-        let mySelfOrders = JSON.parse(localStorage.getItem('pos_my_orders') || '[]');
+        // Variables Customer Status (Safe Parsing)
+        let mySelfOrders = [];
+        try { mySelfOrders = JSON.parse(localStorage.getItem('pos_my_orders') || '[]'); } catch(e) { mySelfOrders = []; }
         let customerPollingInterval = null;
 
-        // Variables for Gatekeeper (Pesanan Masuk)
+        // Variables for Gatekeeper (Safe Parsing)
         let unconfirmedOrders = [];
-        let acknowledgedOrders = JSON.parse(localStorage.getItem('pos_ack_orders') || '[]');
-        let tableTokens = JSON.parse(localStorage.getItem('pos_table_tokens') || '{}');
+        let acknowledgedOrders = [];
+        try { acknowledgedOrders = JSON.parse(localStorage.getItem('pos_ack_orders') || '[]'); } catch(e) { acknowledgedOrders = []; }
+        let tableTokens = {};
+        try { tableTokens = JSON.parse(localStorage.getItem('pos_table_tokens') || '{}'); } catch(e) { tableTokens = {}; }
 
         let savedUrl = localStorage.getItem('pos_script_url');
         let appConfig = { scriptUrl: savedUrl || DEFAULT_SCRIPT_URL };
@@ -1171,8 +1177,6 @@ function doPost(e) {
                 
                 if (urlParams.get('db')) appConfig.scriptUrl = decodeURIComponent(urlParams.get('db'));
                 
-                // --- LOGIKA SESI QR BERBASIS TOKEN ---
-                // Reset memori HP pelanggan jika Token QR berbeda dari yang sebelumnya.
                 const currentToken = urlParams.get('t');
                 const savedToken = localStorage.getItem('pos_current_qr_token');
                 
@@ -1379,7 +1383,7 @@ function doPost(e) {
                 
                 if(window.innerWidth < 1024) toggleCart();
                 
-                customAlert("Pesanan Terkirim!", "Pesanan telah masuk ke Kasir. Silakan pantau halaman 'Status Pesanan Saya'.\n\nAnda dapat memesan menu tambahan lagi kapan saja.", "success");
+                customAlert("Pesanan Terkirim!", "Pesanan telah masuk ke Kasir. Mohon tunggu sesaat hingga Kasir mengkonfirmasi pesanan Anda.", "success");
                 
             } catch(e) {
                 console.error(e);
@@ -1591,18 +1595,15 @@ function doPost(e) {
             
             if (appConfig.scriptUrl) {
                 try {
-                    // Hapus data asli SLF dari server agar HP pelanggan langsung ter-update jadi 'Diterima Kasir'
                     await sendToGas({ action: 'deleteHoldBill', api_key: APP_API_KEY, id: order.id });
                     
                     let isMerged = false;
                     
-                    // Cek jika pesanan adalah Dine In dan meja tersebut sudah punya pesanan aktif sebelumnya
                     if (order.orderType === 'Dine In' && order.table && order.table !== 'Tanpa Meja') {
                         const existingIdx = activeOrders.findIndex(o => o.orderType === 'Dine In' && o.table === order.table);
                         if (existingIdx > -1) {
                             const exOrder = activeOrders[existingIdx];
                             
-                            // Gabungkan pesanan baru ke pesanan meja yang sudah ada
                             order.cart.forEach(newItem => {
                                 const match = exOrder.cart.find(i => i.product.id === newItem.product.id);
                                 if (match) match.qty += newItem.qty;
@@ -1610,7 +1611,6 @@ function doPost(e) {
                             });
                             exOrder.total += order.total;
                             
-                            // Hapus yang lama, simpan ulang yang sudah tergabung ke Cloud
                             await sendToGas({ action: 'deleteHoldBill', api_key: APP_API_KEY, id: exOrder.id });
                             await sendToGas({ action: 'saveHoldBill', api_key: APP_API_KEY, id: exOrder.id, order_type: exOrder.orderType, table_num: exOrder.table || '', total: exOrder.total, timestamp: exOrder.timestamp, cart: JSON.stringify(exOrder.cart) });
                             
@@ -1620,7 +1620,6 @@ function doPost(e) {
                     }
                     
                     if (!isMerged) {
-                        // Jika bukan meja yang sama/Take Away, ubah jadi Hold Bill normal
                         order.id = order.id.replace('SLF-', 'HLD-');
                         activeOrders.push(order);
                         await sendToGas({ action: 'saveHoldBill', api_key: APP_API_KEY, id: order.id, order_type: order.orderType, table_num: order.table || '', total: order.total, timestamp: order.timestamp, cart: JSON.stringify(order.cart) });
@@ -2876,12 +2875,23 @@ function doPost(e) {
             setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
         }
 
+        let qrSelectedTable = null;
+
         function openQRModal() {
             if(!appConfig.scriptUrl) {
-                showToast("Atur URL Database Cloud terlebih dahulu sebelum menggunakan QR Code.", "error");
+                customAlert("Database Belum Diatur", "Silakan atur URL Web App (Google Apps Script) di menu 'Pengaturan Database' terlebih dahulu agar sistem QR Code dapat menghubungkan pelanggan dengan server Anda.", "error");
                 return;
             }
-            renderQRTableOptions(); generateQRCode(); 
+            
+            qrSelectedTable = null;
+            const displaySection = document.getElementById('qr-code-display-section');
+            if(displaySection) {
+                displaySection.classList.add('hidden');
+                displaySection.classList.remove('flex');
+            }
+            
+            renderQRTableGrid(); 
+            
             const modal = document.getElementById('qr-modal');
             const content = document.getElementById('qr-modal-content');
             modal.classList.remove('hidden');
@@ -2890,7 +2900,7 @@ function doPost(e) {
                 content.classList.remove('scale-95'); content.classList.add('scale-100');
             });
         }
-        
+
         function closeQRModal() {
             const modal = document.getElementById('qr-modal');
             const content = document.getElementById('qr-modal-content');
@@ -2899,17 +2909,50 @@ function doPost(e) {
             setTimeout(() => modal.classList.add('hidden'), 500);
         }
         
-        function renderQRTableOptions() {
-            const select = document.getElementById('qr-table-select');
-            let html = '<option value="general">Umum / Kasir (Take Away)</option>';
-            for(let i=1; i<=16; i++) { html += `<option value="${i}">Meja ${i}</option>`; }
-            select.innerHTML = html;
+        function renderQRTableGrid() {
+            const container = document.getElementById('qr-table-grid');
+            if(!container) return;
+            let html = '';
+            
+            const isGeneralSelected = qrSelectedTable === 'general';
+            html += `<button onclick="selectQRTable('general')" class="col-span-4 py-2 mb-1 rounded-lg border font-bold text-[11px] transition-all duration-300 active:scale-95 ${isGeneralSelected ? 'bg-teal-600 text-white border-teal-700 shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">
+                        Bungkus / Take Away (Umum)
+                     </button>`;
+
+            for(let i=1; i<=16; i++) {
+                const isOccupied = activeOrders.some(o => o.orderType === 'Dine In' && o.table === i);
+                const isSelected = qrSelectedTable === i;
+                
+                let btnClass = "bg-white text-slate-700 border-slate-200 hover:border-teal-300 hover:bg-teal-50 shadow-sm"; 
+                if(isOccupied) btnClass = "bg-amber-100 text-amber-700 border-amber-300 shadow-sm";
+                if(isSelected) btnClass = "bg-teal-600 text-white border-transparent shadow-md transform scale-105"; 
+                
+                html += `<button onclick="selectQRTable(${i})" class="py-2 rounded-xl border font-bold text-sm transition-all duration-300 active:scale-95 relative ${btnClass}">
+                           ${i}
+                           ${isOccupied ? `<span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-sm"></span>` : ''}
+                        </button>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function selectQRTable(table) {
+            qrSelectedTable = table;
+            renderQRTableGrid();
+            
+            const displaySection = document.getElementById('qr-code-display-section');
+            displaySection.classList.remove('hidden');
+            displaySection.classList.add('flex');
+            
+            if(table === 'general') document.getElementById('qr-table-label').innerText = "QR Umum (Take Away)";
+            else document.getElementById('qr-table-label').innerText = `QR Meja ${table}`;
+            
+            generateQRCode();
         }
 
         function regenerateQR() {
-            const table = document.getElementById('qr-table-select').value;
+            if(!qrSelectedTable) return;
             const newToken = Math.random().toString(36).substring(2, 10);
-            tableTokens[table] = newToken;
+            tableTokens[qrSelectedTable] = newToken;
             localStorage.setItem('pos_table_tokens', JSON.stringify(tableTokens));
             
             showToast("QR Code diperbarui! QR yang difoto pelanggan sebelumnya akan kadaluarsa.", "success");
@@ -2917,7 +2960,8 @@ function doPost(e) {
         }
         
         function generateQRCode() {
-            const table = document.getElementById('qr-table-select').value;
+            if(!qrSelectedTable) return;
+            const table = qrSelectedTable;
             
             if(!tableTokens[table]) {
                 tableTokens[table] = Math.random().toString(36).substring(2, 10);
@@ -2930,7 +2974,7 @@ function doPost(e) {
             const finalUrl = `${baseUrl}?mode=selforder&table=${table}&db=${dbUrl}&t=${token}`;
 
             if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                showToast("PERINGATAN: Berjalan di lokal! QR Code tidak bisa di-scan dari HP pelanggan. Harap hosting web ini terlebih dahulu.", "error");
+                showToast("PERINGATAN: Berjalan di lokal! QR Code tidak bisa di-scan dari HP pelanggan.", "error");
             }
             
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(finalUrl)}&margin=10`;
@@ -2958,7 +3002,8 @@ function doPost(e) {
         }
         
         function printQRCode() {
-            const table = document.getElementById('qr-table-select').value;
+            if(!qrSelectedTable) return;
+            const table = qrSelectedTable;
             const qrSrc = document.getElementById('qr-image').src;
             const title = table === 'general' ? 'SCAN & PESAN' : `MEJA ${table}`;
             const subtitle = table === 'general' ? 'Pesan & Bayar dari HP' : 'Scan untuk memesan dari meja Anda';
