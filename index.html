@@ -1,0 +1,3118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sistem Kasir Premium - SmartPOS</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome & Google Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc; 
+            -webkit-font-smoothing: antialiased;
+            overscroll-behavior-y: none;
+        }
+        
+        ::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+        body { scrollbar-width: none; } /* Firefox */
+
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; margin: 0; 
+        }
+
+        .loader {
+            border: 2px solid rgba(0,0,0,0.1);
+            border-top: 2px solid #0f172a; 
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            animation: spin 0.8s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
+        }
+        .loader-white {
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid #ffffff;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .shadow-premium { box-shadow: 0 8px 24px -6px rgba(15, 23, 42, 0.08); } 
+        .shadow-premium-hover { box-shadow: 0 16px 32px -6px rgba(15, 23, 42, 0.12); }
+        .shadow-btn { box-shadow: 0 8px 20px -6px rgba(16, 185, 129, 0.4); } 
+        
+        @keyframes ring {
+            0% { transform: rotate(0); }
+            10%, 30%, 50% { transform: rotate(-15deg); }
+            20%, 40%, 60% { transform: rotate(15deg); }
+            70%, 100% { transform: rotate(0); }
+        }
+        .animate-ring { animation: ring 1.5s ease-in-out infinite; }
+
+        /* EASING SMOOTH */
+        .ease-premium { transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1) !important; }
+
+        /* LIST VIEW STYLE COMPACT */
+        .list-view {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+        }
+        .list-view .product-card {
+            flex-direction: row !important;
+            align-items: center;
+            height: auto !important;
+            padding: 8px !important;
+            text-align: left !important;
+            border-radius: 12px !important;
+        }
+        .list-view .product-card .img-container {
+            width: 60px !important;
+            height: 60px !important;
+            margin-bottom: 0 !important;
+            margin-right: 12px !important;
+            border-radius: 8px !important;
+        }
+        .list-view .product-card .info-container {
+            padding: 0 !important;
+            flex-direction: row !important;
+            align-items: center !important;
+        }
+        .list-view .product-card .info-text { flex: 1; }
+        .list-view .product-card .list-add-btn { display: flex !important; }
+
+        /* SPLIT VIEW COMPACT OVERRIDES */
+        body.force-split-view main { flex-direction: row !important; }
+        body.force-split-view #cart-sidebar {
+            position: relative !important;
+            transform: translate(0) !important;
+            width: 35% !important; 
+            min-width: 260px !important; 
+            max-width: 380px !important;
+            display: flex !important;
+            height: 100% !important;
+            border-left: 1px solid #f1f5f9 !important;
+            border-radius: 1.5rem !important;
+            box-shadow: -10px 0 30px -10px rgba(15, 23, 42, 0.05) !important;
+            z-index: 10 !important;
+        }
+        @media (max-width: 768px) {
+            body.force-split-view #cart-sidebar { width: 40% !important; min-width: 240px !important; }
+        }
+        body.force-split-view #mobile-cart-btn { display: none !important; }
+        body.force-split-view #cart-overlay { display: none !important; }
+        body.force-split-view #close-cart-btn { display: none !important; }
+
+        /* MODE SELF-ORDER (PELANGGAN) SECURITY OVERRIDES */
+        body.self-order-mode #main-sidebar { display: none !important; }
+        body.self-order-mode #sidebar-overlay { display: none !important; }
+        body.self-order-mode #order-type-container { display: none !important; }
+        body.self-order-mode #save-order-btn { display: none !important; }
+        body.self-order-mode #split-info-banner { display: none !important; }
+        body.self-order-mode #admin-header-actions { display: none !important; }
+        body.self-order-mode #admin-profile-section { display: none !important; }
+        body.self-order-mode #header-divider { display: none !important; }
+        body.self-order-mode #reset-cart-btn { display: none !important; }
+        
+        /* PRINT STYLES */
+        @media print {
+            body * { visibility: hidden; }
+            #print-receipt-area, #print-receipt-area * { visibility: visible; }
+            #print-receipt-area {
+                position: absolute;
+                left: 0; top: 0;
+                width: 100%;
+                background: white;
+                color: black;
+                font-family: monospace;
+            }
+        }
+    </style>
+</head>
+<body class="h-screen w-full overflow-hidden text-slate-800 flex flex-col bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed text-xs md:text-sm">
+    
+    <!-- Background Overlay -->
+    <div class="fixed inset-0 bg-slate-50/95 -z-10 backdrop-blur-3xl"></div>
+
+    <div id="login-screen" class="fixed inset-0 bg-slate-50 z-[9999] flex items-center justify-center transition-opacity duration-500">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm flex flex-col border border-slate-100 transform transition-transform duration-500 hover:scale-[1.01]">
+            <div class="flex items-center justify-center gap-3 mb-8">
+                <div class="w-12 h-12 bg-slate-900 text-white rounded-xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-store text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-3xl tracking-tight text-slate-900 leading-none">SmartPOS</h1>
+                    <p class="text-[10px] uppercase tracking-widest text-emerald-500 font-bold mt-1">Cloud Secure Login</p>
+                </div>
+            </div>
+            
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Username</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="login-username" class="w-full pl-10 pr-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" placeholder="Mis: admin / kasir">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Password</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="password" id="login-password" class="w-full pl-10 pr-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" placeholder="••••••••" onkeyup="if(event.key === 'Enter') handleLogin()">
+                    </div>
+                </div>
+            </div>
+            
+            <button id="btn-login" onclick="handleLogin()" class="w-full py-3.5 bg-gradient-to-r from-teal-600 to-emerald-500 text-white font-bold rounded-xl shadow-btn transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 mb-5">
+                <span id="txt-login">Masuk ke Sistem</span>
+            </button>
+            
+            <div class="border-t border-slate-100 pt-4 text-center">
+                <button onclick="openSettingsModal()" class="text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors flex items-center justify-center gap-1.5 mx-auto px-4 py-2 rounded-lg hover:bg-slate-50">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Konfigurasi Cloud Database
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HEADER UTAMA -->
+    <header id="main-header" class="bg-white/80 backdrop-blur-xl border-b border-slate-200 h-14 flex items-center justify-between px-3 md:px-5 shrink-0 z-10 shadow-sm relative w-full transition-all duration-500 ease-premium">
+        
+        <div class="flex items-center gap-2 cursor-pointer group" id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Buka Menu">
+            <div class="w-8 h-8 bg-slate-900 text-white rounded-lg shadow-sm flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 ease-out active:scale-95">
+                <i class="fa-solid fa-bars text-sm"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg md:text-xl tracking-tight text-slate-900 leading-none">SmartPOS</h1>
+                <p class="text-[7px] md:text-[9px] uppercase tracking-widest text-emerald-500 font-bold mt-0.5">Cloud Edition</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 md:gap-3" id="admin-header-actions">
+            <!-- Tombol Lonceng Antrean -->
+            <button id="new-order-alert-btn" onclick="openIncomingQueueModal()" class="hidden h-8 px-3 flex items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors duration-300 border border-red-600 active:scale-95 animate-pulse shadow-md shadow-red-500/30 gap-1.5 font-bold text-xs" title="Ada Pesanan Baru">
+                <i class="fa-solid fa-bell animate-ring"></i> <span id="new-order-alert-text">Pesanan Baru</span>
+            </button>
+
+            <button onclick="toggleFullScreen()" id="fullscreen-btn" class="w-8 h-8 hidden sm:flex items-center justify-center rounded-lg bg-white hover:bg-slate-100 text-slate-600 transition-colors duration-300 border border-slate-200 active:scale-95" title="Layar Penuh (Fullscreen)">
+                <i class="fa-solid fa-expand text-xs" id="fullscreen-icon"></i>
+            </button>
+
+            <button onclick="openQRModal()" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white hover:bg-slate-100 text-slate-600 transition-colors duration-300 border border-slate-200 active:scale-95" title="Menu QR / Self Order">
+                <i class="fa-solid fa-qrcode text-xs"></i>
+            </button>
+
+            <button onclick="openViewSettings()" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white hover:bg-slate-100 text-slate-600 transition-colors duration-300 border border-slate-200 active:scale-95" title="Pengaturan Tampilan">
+                <i class="fa-solid fa-border-all text-xs"></i>
+            </button>
+
+            <button onclick="openActiveOrdersModal()" class="relative w-8 h-8 flex items-center justify-center rounded-lg bg-white hover:bg-slate-100 text-slate-600 transition-colors duration-300 border border-slate-200 active:scale-95" title="Pesanan Tersimpan (Hold)">
+                <i class="fa-solid fa-file-invoice text-xs"></i>
+                <span id="active-orders-badge" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white hidden transition-all duration-300 shadow-sm animate-bounce">0</span>
+            </button>
+
+            <button onclick="toggleSplitView()" id="split-view-btn" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white hover:bg-slate-100 text-slate-600 transition-colors duration-300 border border-slate-200 active:scale-95" title="Mode Layar Terbagi">
+                <i class="fa-solid fa-table-columns text-xs"></i>
+            </button>
+
+            <div id="connection-status" class="flex items-center gap-1.5 text-[9px] md:text-[10px] font-bold text-slate-600 bg-white px-2 py-1 md:px-3 md:py-1.5 rounded-full border border-slate-200 cursor-pointer shadow-sm transition-all duration-300 hover:bg-slate-50" onclick="openSettingsModal()">
+                <i class="fa-solid fa-circle-notch animate-spin"></i> <span class="hidden sm:inline">Memeriksa...</span>
+            </div>
+        </div>
+        
+        <div class="h-5 md:h-6 w-[1px] bg-slate-200 hidden sm:block mx-0.5" id="header-divider"></div> 
+        
+        <div class="flex items-center gap-2 cursor-pointer group hover:bg-slate-100 px-2 py-1 rounded-lg transition-colors border border-transparent hover:border-slate-200" id="admin-profile-section" onclick="handleLogoutConfirm()" title="Keluar (Logout)">
+            <div class="text-right hidden md:block">
+                <p class="text-xs font-bold text-slate-900 leading-tight" id="admin-profile-name">Admin</p>
+                <p class="text-[10px] text-slate-500" id="admin-profile-role">Owner</p>
+            </div>
+            <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center border-2 border-white shadow-sm overflow-hidden group-hover:shadow-md transition-all duration-300 transform group-hover:scale-105">
+                <i class="fa-solid fa-user text-emerald-600 text-[10px]"></i>
+            </div>
+        </div>
+
+        <!-- BAGIAN PELANGGAN -->
+        <button id="customer-status-btn" onclick="openCustomerStatusModal()" class="hidden items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm hover:bg-slate-50 transition-colors relative active:scale-95 ml-2">
+            <i class="fa-solid fa-receipt text-emerald-600 text-sm"></i>
+            <span class="text-[10px] font-bold text-slate-700 hidden sm:inline">Status Pesanan</span>
+            <span id="customer-status-badge" class="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white hidden animate-bounce">0</span>
+        </button>
+
+        <div id="customer-table-display" class="hidden items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 shadow-sm ml-2">
+            <i class="fa-solid fa-utensils text-emerald-600 text-sm"></i>
+            <div class="text-right">
+                <p class="text-[9px] font-bold text-emerald-500 uppercase tracking-widest leading-tight">Pesanan</p>
+                <p class="text-xs md:text-sm font-extrabold text-emerald-700 leading-tight" id="customer-table-text">Meja -</p>
+            </div>
+        </div>
+    </header>
+
+    <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 hidden opacity-0 transition-opacity duration-500 ease-premium" onclick="toggleSidebar()"></div>
+
+    <aside id="main-sidebar" class="fixed top-0 left-0 h-full w-[75vw] max-w-[280px] bg-white/95 backdrop-blur-xl shadow-2xl z-50 transform -translate-x-full transition-transform duration-500 ease-premium flex flex-col border-r border-slate-100">
+        <div class="h-14 flex items-center justify-between px-5 shrink-0 border-b border-slate-100 bg-white">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 bg-slate-900 text-white rounded-lg shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-store text-xs"></i>
+                </div>
+                <h1 class="font-bold text-base md:text-lg tracking-tight text-slate-900">SmartPOS</h1>
+            </div>
+            <button onclick="toggleSidebar()" class="text-slate-400 hover:text-slate-900 transition-colors duration-300 bg-slate-50 hover:bg-slate-100 w-7 h-7 rounded-full flex items-center justify-center active:scale-90">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+        </div>
+        
+        <div class="p-4 flex-1 overflow-y-auto custom-scrollbar">
+            <!-- Menu Utama -->
+            <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 px-1 flex items-center gap-2">
+                Menu Utama <div class="h-px bg-slate-200 flex-1"></div>
+            </div>
+            <ul class="space-y-1.5 mb-6">
+                <li><a href="#" class="flex items-center gap-3 px-3 py-2.5 bg-slate-900 text-white rounded-xl font-semibold shadow-sm transition-all duration-300 text-xs hover:bg-slate-800" onclick="toggleSidebar()"><i class="fa-solid fa-layer-group w-5 text-center opacity-90"></i> Kasir POS</a></li>
+                <li><a href="#" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-medium transition-all duration-300 text-xs" onclick="toggleSidebar(); setTimeout(openQRModal, 300);"><i class="fa-solid fa-qrcode w-5 text-center opacity-70"></i> QR Self-Order</a></li>
+            </ul>
+            
+            <!-- Master Data -->
+            <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 px-1 flex items-center gap-2">
+                Master Data <div class="h-px bg-slate-200 flex-1"></div>
+            </div>
+            <ul class="space-y-1.5 mb-6">
+                <li><a href="#" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-medium transition-all duration-300 text-xs" onclick="toggleSidebar(); setTimeout(openAddMenuModal, 300);"><i class="fa-solid fa-box w-5 text-center opacity-70"></i> Manajemen Produk</a></li>
+                <li><a href="#" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-medium transition-all duration-300 text-xs" onclick="toggleSidebar(); setTimeout(openCategoryModal, 300);"><i class="fa-solid fa-tags w-5 text-center opacity-70"></i> Manajemen Kategori</a></li>
+            </ul>
+
+            <!-- Sistem & Laporan -->
+            <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 px-1 flex items-center gap-2">
+                Sistem & Laporan <div class="h-px bg-slate-200 flex-1"></div>
+            </div>
+            <ul class="space-y-1.5">
+                <li><a href="#" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-medium transition-all duration-300 text-xs" onclick="toggleSidebar(); setTimeout(openHistoryModal, 300);"><i class="fa-solid fa-clock-rotate-left w-5 text-center opacity-70"></i> Histori Transaksi</a></li>
+                <li><a href="#" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-medium transition-all duration-300 text-xs" onclick="toggleSidebar(); setTimeout(openViewSettings, 300);"><i class="fa-solid fa-desktop w-5 text-center opacity-70"></i> Pengaturan Tampilan</a></li>
+                <li><a href="#" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-medium transition-all duration-300 text-xs" onclick="toggleSidebar(); setTimeout(openSettingsModal, 300);"><i class="fa-solid fa-cloud-arrow-up w-5 text-center opacity-70"></i> Pengaturan Database</a></li>
+            </ul>
+        </div>
+        <div class="p-4 border-t border-slate-100 text-center">
+            <p class="text-[10px] text-slate-400 font-medium">SmartPOS v2.4 - Super Sync</p>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex overflow-hidden w-full max-w-[1600px] mx-auto p-2 md:p-3 gap-2 md:gap-3 relative transition-all duration-300">
+        
+        <section class="flex-1 flex flex-col bg-transparent h-full w-full min-w-0">
+            <div class="pb-2 md:pb-3 shrink-0 flex flex-col gap-2">
+                
+                <div class="flex items-center gap-2 md:gap-3 w-full">
+                    <div class="relative w-full group flex-1">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-search text-slate-400 group-focus-within:text-slate-900 transition-colors duration-300 text-xs md:text-sm"></i>
+                        </div>
+                        <input type="text" id="search-input" placeholder="Cari menu pesanan..." class="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-200 shadow-sm transition-all duration-300 font-medium placeholder-slate-400 text-slate-900 text-xs md:text-sm">
+                    </div>
+                    
+                    <div id="order-type-container" class="flex items-center bg-slate-100 border border-slate-200 rounded-xl p-1 shrink-0">
+                        <button id="btn-dine-in" onclick="setOrderType('Dine In')" class="w-10 h-9 md:w-12 md:h-10 flex flex-col items-center justify-center bg-white text-emerald-600 rounded-lg shadow-sm transition-all duration-300 border border-slate-200 active:scale-95" title="Dine In (Makan di tempat)">
+                            <i class="fa-solid fa-utensils text-[11px] md:text-xs"></i>
+                            <span id="table-indicator" class="text-[7px] md:text-[8px] font-bold mt-0.5 whitespace-nowrap">Meja ?</span>
+                        </button>
+                        <button id="btn-take-away" onclick="setOrderType('Take Away')" class="w-10 h-9 md:w-12 md:h-10 flex flex-col items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg transition-all duration-300 border border-transparent active:scale-95" title="Take Away (Bungkus)">
+                            <i class="fa-solid fa-bag-shopping text-[11px] md:text-xs"></i>
+                            <span class="text-[7px] md:text-[8px] font-bold mt-0.5 whitespace-nowrap">Bungkus</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="flex gap-1.5 md:gap-2 overflow-x-auto pb-1 scrollbar-hide snap-x" id="category-container">
+                    <!-- Categories dimuat dari JS -->
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto pb-20 md:pb-16 pr-1 custom-scrollbar w-full" id="product-list">
+                <div id="product-loading" class="hidden flex-col items-center justify-center h-full text-slate-500">
+                    <div class="loader mb-2"></div>
+                    <p class="font-medium tracking-wide text-xs md:text-sm mt-2">Menyinkronkan Server...</p>
+                </div>
+                <div id="products-grid" class="w-full transition-all duration-300 ease-in-out"></div>
+            </div>
+        </section>
+
+        <div id="cart-overlay" class="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[45] hidden opacity-0 transition-opacity duration-500 ease-premium lg:hidden" onclick="toggleCart()"></div>
+
+        <aside id="cart-sidebar" class="fixed inset-y-0 right-0 z-50 w-[85vw] sm:w-[320px] lg:w-full lg:max-w-[340px] transform translate-x-full transition-transform duration-500 ease-premium lg:relative lg:translate-x-0 lg:flex bg-white border-l border-slate-200 lg:border lg:rounded-2xl flex-col shadow-premium lg:mb-1 lg:mt-0 h-full lg:h-auto overflow-hidden">
+            
+            <div class="px-3 md:px-4 py-3 border-b border-slate-100 flex justify-between items-center shrink-0 bg-slate-50/50">
+                <div class="flex items-center gap-2">
+                    <button id="close-cart-btn" class="lg:hidden w-7 h-7 flex items-center justify-center rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors duration-300 active:scale-90" onclick="toggleCart()">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+                    <div class="w-7 h-7 bg-white rounded-lg flex items-center justify-center text-slate-700 shadow-sm border border-slate-200">
+                        <i class="fa-solid fa-basket-shopping text-xs"></i>
+                    </div>
+                    <h2 class="font-bold text-sm md:text-base text-slate-900 tracking-tight">Pesanan Baru</h2>
+                </div>
+                
+                <button onclick="confirmClearCart()" class="text-[10px] font-bold text-slate-400 hover:text-red-500 bg-white border border-slate-200 hover:border-red-200 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-all duration-300 ease-out flex items-center gap-1.5 active:scale-95 shadow-sm" title="Kosongkan Pesanan" id="reset-cart-btn">
+                    <i class="fa-solid fa-trash-can"></i> <span class="hidden sm:inline">Reset</span>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-3 md:p-4 custom-scrollbar" id="cart-items">
+                <div id="empty-cart-msg" class="flex flex-col items-center justify-center h-full text-slate-400 p-4 md:p-6 text-center transition-opacity duration-300">
+                    <div class="w-16 h-16 md:w-24 md:h-24 mb-3 md:mb-4 opacity-50">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16.5 16C15.6716 16 15 16.6716 15 17.5C15 18.3284 15.6716 19 16.5 19C17.3284 19 18 18.3284 18 17.5C18 16.6716 17.3284 16 16.5 16Z" fill="currentColor"/><path d="M9.5 16C8.67157 16 8 16.6716 8 17.5C8 18.3284 8.67157 19 9.5 19C10.3284 19 11 18.3284 11 17.5C11 16.6716 10.3284 16 9.5 16Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M4.60621 3.51475C4.26938 3.12185 3.77196 2.89436 3.25413 2.89436H2.75C2.33579 2.89436 2 3.23015 2 3.64436C2 4.05857 2.33579 4.39436 2.75 4.39436H3.25413C3.42674 4.39436 3.59254 4.47019 3.70482 4.60119L5.80165 7.04753L6.37682 12.3552C6.54921 13.9463 7.8913 15.1384 9.49206 15.1384H16.8907C18.3846 15.1384 19.6644 14.1039 19.9868 12.6391L21.464 5.92485C21.6565 5.04944 20.9881 4.22552 20.0934 4.22552H5.6601L5.15878 3.64062L4.60621 3.51475ZM6.55013 7.92211L5.94279 7.21356L5.72591 5.72552H20.0934L18.524 12.857C18.3628 13.5893 17.7229 14.1065 16.9758 14.1065H9.49206C8.69168 14.1065 8.02063 13.5105 7.93444 12.7149L6.55013 7.92211Z" fill="currentColor"/></svg>
+                    </div>
+                    <p class="font-bold text-slate-800 mb-1 text-sm md:text-base">Pesanan Kosong</p>
+                    <p class="text-xs md:text-sm text-slate-500">Pilih menu dari daftar produk.</p>
+                </div>
+                <div id="cart-list" class="space-y-1.5 md:space-y-2"></div>
+            </div>
+
+            <div class="p-3 md:p-4 border-t border-slate-100 bg-white shrink-0 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] lg:pb-4">
+                <div class="space-y-1 mb-2 md:mb-3">
+                    <div class="flex justify-between items-center text-[10px] md:text-xs">
+                        <span class="text-slate-500 font-medium">Subtotal</span>
+                        <span class="font-bold text-slate-800" id="subtotal-display">Rp 0</span>
+                    </div>
+                    <div class="flex justify-between items-center text-[10px] md:text-xs">
+                        <span class="text-slate-500 font-medium">Pajak (11%)</span>
+                        <span class="font-bold text-slate-800" id="tax-display">Rp 0</span>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-end mb-3 md:mb-4">
+                    <span class="text-slate-500 font-medium pb-0.5 text-[10px] md:text-xs">Total</span>
+                    <span class="text-lg md:text-xl font-extrabold text-slate-900 tracking-tight" id="total-display">Rp 0</span>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button onclick="saveCurrentOrder()" id="save-order-btn" class="w-1/3 bg-white border-2 border-slate-200 hover:border-teal-500 hover:text-teal-600 disabled:border-slate-100 disabled:text-slate-300 disabled:cursor-not-allowed text-slate-600 font-bold py-2.5 md:py-3 rounded-xl transition-all duration-300 active:scale-[0.98] flex justify-center items-center gap-1.5 text-xs md:text-sm" disabled title="Simpan Bill / Hold">
+                        <i class="fa-solid fa-clock-rotate-left"></i> <span class="hidden lg:inline">Simpan</span>
+                    </button>
+                    <button onclick="openPaymentModal()" id="checkout-btn" class="flex-1 relative bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed text-white font-bold py-2.5 md:py-3 rounded-xl shadow-btn transition-all duration-300 ease-out active:scale-[0.98] flex justify-center items-center gap-2 overflow-hidden group text-xs md:text-sm" disabled>
+                        <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-premium"></div>
+                        <span class="relative z-10"><i class="fa-solid fa-credit-card mr-1"></i> Pembayaran</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Floating Cart -->
+        <button id="mobile-cart-btn" onclick="toggleCart()" class="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-gradient-to-r from-teal-600 to-emerald-500 text-white rounded-xl shadow-btn py-3 px-4 z-40 flex items-center justify-between transition-transform duration-500 ease-premium transform translate-y-[150%] active:scale-[0.98]">
+            <div class="flex items-center gap-2">
+                <div class="relative">
+                    <i class="fa-solid fa-basket-shopping text-sm"></i>
+                    <span id="mobile-cart-badge" class="absolute -top-2 -right-2 bg-slate-900 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-emerald-500 transition-all duration-300">0</span>
+                </div>
+                <span class="font-bold text-xs">Pesanan</span>
+            </div>
+            <span class="font-extrabold text-sm text-white transition-all duration-300" id="mobile-cart-total">Rp 0</span>
+        </button>
+    </main>
+
+    <!-- Modal Pilih Meja -->
+    <div id="table-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[340px] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="table-modal-content">
+            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <div class="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 text-xs border border-emerald-100"><i class="fa-solid fa-utensils"></i></div>
+                    Pilih Nomor Meja
+                </h3>
+                <button onclick="closeTableModal()" class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-200 text-slate-500 transition-colors duration-300 active:scale-90"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            
+            <div class="p-4 flex-1 overflow-y-auto bg-slate-50/50">
+                <div id="table-grid-container" class="grid grid-cols-4 gap-2 mb-4">
+                    <!-- Meja digenerate JS -->
+                </div>
+                <button onclick="selectTable('Tanpa Meja')" class="w-full py-2.5 rounded-xl border border-slate-200 bg-white font-bold text-sm text-slate-600 hover:bg-slate-100 transition-all duration-300 active:scale-95 shadow-sm">
+                    Tanpa Meja
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal QR Self-Order -->
+    <div id="qr-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[340px] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="qr-modal-content">
+            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <div class="w-7 h-7 bg-teal-50 rounded-lg flex items-center justify-center text-teal-600 text-xs border border-teal-100"><i class="fa-solid fa-qrcode"></i></div>
+                    QR Self-Order
+                </h3>
+                <button onclick="closeQRModal()" class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-200 text-slate-500 transition-colors duration-300 active:scale-90"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            
+            <div class="p-4 flex flex-col items-center bg-slate-50/50">
+                <p class="text-[10px] text-slate-500 text-center mb-3">Pelanggan memindai QR ini untuk melihat menu dan memesan dari HP.</p>
+                
+                <div class="w-full mb-3">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Pilih Meja:</label>
+                    <div id="qr-table-grid" class="grid grid-cols-4 gap-1.5 max-h-32 overflow-y-auto custom-scrollbar p-1.5 border border-slate-200 rounded-xl bg-slate-100/50">
+                        <!-- Dimuat via JS -->
+                    </div>
+                    <button onclick="selectQRTable('general')" id="btn-qr-general" class="w-full mt-1.5 py-1.5 rounded-lg border font-bold text-[11px] transition-all duration-300">
+                        Umum / Kasir (Take Away)
+                    </button>
+                </div>
+
+                <div class="p-3 bg-white border border-slate-200 rounded-xl shadow-sm mb-4 w-full flex justify-center">
+                    <img id="qr-image" src="" alt="QR Code" class="w-32 h-32 md:w-40 md:h-40 object-contain">
+                </div>
+                
+                <div class="flex gap-2 w-full">
+                    <button onclick="regenerateQR()" class="flex-1 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 font-bold rounded-lg text-xs transition-colors flex justify-center items-center gap-1.5 active:scale-95 shadow-sm" title="Perbarui QR agar QR lama kadaluarsa">
+                        <i class="fa-solid fa-arrows-rotate"></i> Perbarui
+                    </button>
+                    <button onclick="printQRCode()" class="flex-1 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-colors flex justify-center items-center gap-1.5 active:scale-95 shadow-sm">
+                        <i class="fa-solid fa-print"></i> Cetak
+                    </button>
+                    <button onclick="fullscreenQR()" class="flex-1 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold rounded-lg text-xs transition-colors flex justify-center items-center gap-1.5 active:scale-95">
+                        <i class="fa-solid fa-expand"></i> Penuh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Status Pesanan (Untuk Pelanggan) -->
+    <div id="customer-status-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[400px] max-h-[85vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="customer-status-content">
+            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <div class="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 text-xs"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    Status Pesanan Saya
+                </h3>
+                <button onclick="closeCustomerStatusModal()" class="w-7 h-7 flex items-center justify-center rounded-full bg-white hover:bg-slate-200 text-slate-500 transition-colors shadow-sm border border-slate-200 active:scale-90"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            
+            <div class="p-4 flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar">
+                <p class="text-[10px] text-slate-500 text-center mb-4">Daftar pesanan yang Anda buat dari perangkat ini.</p>
+                <div id="customer-status-list" class="flex flex-col gap-3">
+                    <!-- Dimuat JS -->
+                </div>
+            </div>
+            
+            <div class="p-3 bg-white border-t border-slate-100 flex justify-end shrink-0">
+                <button onclick="clearMyOrdersHistory()" class="px-4 py-2 text-[10px] font-bold text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100 flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-trash-can"></i> Bersihkan Riwayat
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fullscreen QR Overlay -->
+    <div id="fullscreen-qr" class="fixed inset-0 bg-slate-900 z-[100] hidden flex-col items-center justify-center opacity-0 transition-opacity duration-500 ease-premium">
+        <button onclick="closeFullscreenQR()" class="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors active:scale-90"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <div class="text-center mb-6">
+            <h2 class="text-3xl font-extrabold text-white mb-2 tracking-tight">Scan & Pesan</h2>
+            <p class="text-slate-300 text-sm" id="fullscreen-qr-desc">Arahkan kamera HP Anda ke kode QR ini.</p>
+        </div>
+        <div class="bg-white p-6 rounded-[2rem] shadow-2xl transform transition-transform duration-500 hover:scale-105">
+            <img id="fullscreen-qr-img" src="" alt="QR Code" class="w-64 h-64">
+        </div>
+    </div>
+
+    <!-- MODAL PEMBAYARAN & SPLIT BILL -->
+    <div id="payment-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] hidden flex items-end md:items-center justify-center sm:p-4 opacity-0 transition-opacity duration-500 ease-premium">
+        <div class="bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden transform translate-y-full md:translate-y-0 md:scale-95 transition-all duration-500 ease-premium relative flex flex-col md:flex-row border border-slate-100" id="payment-modal-content">
+            
+            <!-- KOLOM KIRI: RINCIAN & SPLIT BILL -->
+            <div class="w-full md:w-5/12 flex flex-col border-b md:border-b-0 md:border-r border-slate-100 bg-slate-50/50">
+                <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                    <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-receipt text-emerald-600"></i> Rincian Pesanan
+                    </h3>
+                    <button onclick="closePaymentModal()" class="md:hidden w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors duration-300"><i class="fa-solid fa-xmark text-sm"></i></button>
+                </div>
+                
+                <div class="px-4 pt-3 pb-2 bg-white border-b border-slate-100 shrink-0">
+                    <div class="flex p-1 bg-slate-100/80 rounded-xl gap-1 border border-slate-200/60">
+                        <button id="tab-pay-full" onclick="setPaymentMode('full')" class="flex-1 py-1.5 text-[11px] font-bold rounded-lg bg-white text-slate-800 shadow-sm border border-slate-200/50 transition-all duration-300">Bayar Penuh</button>
+                        <button id="tab-pay-split" onclick="setPaymentMode('split')" class="flex-1 py-1.5 text-[11px] font-bold rounded-lg text-slate-500 hover:text-slate-700 transition-all duration-300">Bayar Terpisah (Split)</button>
+                    </div>
+                </div>
+
+                <div id="split-info-banner" class="hidden p-3 bg-amber-50/80 text-[10px] text-slate-600 border-b border-amber-100 shrink-0 flex gap-2 items-start">
+                    <i class="fa-solid fa-circle-info text-amber-500 mt-0.5"></i>
+                    <p>Tambahkan (+) menu yang akan <strong>dibayar sekarang</strong>. Sisa menu otomatis masuk ke Meja/Hold Bill.</p>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-3 custom-scrollbar flex flex-col gap-2 max-h-[35vh] md:max-h-none" id="payment-split-items"></div>
+            </div>
+
+            <!-- KOLOM KANAN: METODE PEMBAYARAN -->
+            <div class="w-full md:w-7/12 flex flex-col bg-white">
+                <div class="hidden md:flex px-5 pt-5 pb-3 justify-between items-center shrink-0 border-b border-slate-50">
+                    <h3 class="font-extrabold text-lg text-slate-900 tracking-tight">Proses Pembayaran</h3>
+                    <button onclick="closePaymentModal()" class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors duration-300 active:scale-90"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                
+                <div class="px-4 md:px-5 pb-4 pt-4 overflow-y-auto flex-1 custom-scrollbar">
+                    <div class="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-200 text-center">
+                        <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">Total Dibayar</p>
+                        <div class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tighter transition-all duration-300" id="payment-total-display">Rp 0</div>
+                    </div>
+
+                    <div class="flex p-1 bg-slate-100/80 rounded-xl mb-4 gap-1 border border-slate-200/60">
+                        <button id="tab-tunai" onclick="selectPaymentMethod('Tunai')" class="flex-1 py-2 text-[11px] font-bold rounded-lg bg-white text-slate-800 shadow-sm border border-slate-200/50 transition-all duration-300">Tunai</button>
+                        <button id="tab-qris" onclick="selectPaymentMethod('QRIS')" class="flex-1 py-2 text-[11px] font-bold rounded-lg text-slate-500 hover:text-slate-700 transition-all duration-300">QRIS</button>
+                        <button id="tab-transfer" onclick="selectPaymentMethod('Transfer')" class="flex-1 py-2 text-[11px] font-bold rounded-lg text-slate-500 hover:text-slate-700 transition-all duration-300">Transfer</button>
+                    </div>
+
+                    <div id="cash-section" class="block transition-all duration-300">
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-slate-800 mb-1.5">Uang Diterima (Cash)</label>
+                            <div class="relative shadow-sm rounded-xl">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">Rp</span>
+                                <input type="text" inputmode="numeric" id="cash-input" class="w-full pl-9 pr-3 py-2.5 text-lg font-extrabold bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all duration-300 text-right text-slate-900" placeholder="0" oninput="formatInputCurrency(this)">
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-2 mb-4" id="quick-cash-container">
+                            <button onclick="setCash(50000)" class="py-2 bg-white border border-slate-200 rounded-lg font-bold text-slate-700 hover:bg-slate-50 transition-all duration-300 shadow-sm active:scale-95 text-[11px]">50.000</button>
+                            <button onclick="setCash(100000)" class="py-2 bg-white border border-slate-200 rounded-lg font-bold text-slate-700 hover:bg-slate-50 transition-all duration-300 shadow-sm active:scale-95 text-[11px]">100.000</button>
+                            <button onclick="setCash('exact')" class="py-2 bg-emerald-50 border border-emerald-100 rounded-lg font-bold text-emerald-700 hover:bg-emerald-100 transition-all duration-300 shadow-sm active:scale-95 text-[11px]">Uang Pas</button>
+                        </div>
+
+                        <div class="flex justify-between items-center py-3 border-t border-dashed border-slate-200">
+                            <span class="text-slate-600 font-bold text-xs">Kembalian</span>
+                            <span class="text-lg font-extrabold text-slate-400" id="change-display">Rp 0</span>
+                        </div>
+                    </div>
+
+                    <div id="qris-section" class="hidden transition-all duration-300">
+                        <div class="flex flex-col items-center justify-center p-4 bg-white border-2 border-dashed border-slate-200 rounded-xl mb-2">
+                            <div class="w-24 h-24 bg-slate-100 rounded-lg mb-3 flex items-center justify-center p-2 border border-slate-200">
+                                <img src="https://placehold.co/200x200/ffffff/0f172a?text=QRIS" alt="QRIS" class="w-full h-full object-contain rounded-md">
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 text-center">Scan QRIS untuk membayar</p>
+                        </div>
+                    </div>
+
+                    <div id="transfer-section" class="hidden transition-all duration-300">
+                        <div class="p-4 bg-white border border-slate-200 rounded-xl mb-2 shadow-sm">
+                            <p class="text-xs font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">Rekening Toko</p>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[11px] text-slate-500">Bank BCA</span>
+                                <span class="text-xs font-bold text-slate-900">8234 5678 90</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-4 md:px-5 pb-4 pt-2 bg-white border-t border-slate-50 shrink-0 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+                    <button id="process-payment-btn" onclick="processTransaction()" class="w-full bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 text-white font-bold py-2.5 rounded-xl shadow-btn transition-all duration-300 active:scale-[0.98] flex justify-center items-center gap-2 text-sm" disabled>
+                        <span id="process-text" class="transition-opacity duration-300">Selesaikan Transaksi</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Hold Bills -->
+    <div id="active-orders-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[480px] max-h-[85vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="active-orders-content">
+            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <div class="w-7 h-7 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600 text-xs border border-amber-100"><i class="fa-solid fa-file-invoice"></i></div>
+                    Pesanan Tersimpan
+                </h3>
+                <button onclick="closeActiveOrdersModal()" class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-200 text-slate-500 transition-colors duration-300 active:scale-90"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            
+            <div class="px-4 pt-3 pb-2 shrink-0 bg-slate-50/50">
+                <div class="flex p-1 bg-slate-200/50 rounded-xl gap-1 border border-slate-200/60">
+                    <button id="tab-saved-all" onclick="filterSavedOrders('all')" class="flex-1 py-2 text-[11px] font-bold rounded-lg bg-white text-slate-800 shadow-sm border border-slate-200/50 transition-all duration-300">Semua</button>
+                    <button id="tab-saved-dinein" onclick="filterSavedOrders('dinein')" class="flex-1 py-2 text-[11px] font-bold rounded-lg text-slate-500 hover:text-slate-700 transition-all duration-300">Dine In</button>
+                    <button id="tab-saved-takeaway" onclick="filterSavedOrders('takeaway')" class="flex-1 py-2 text-[11px] font-bold rounded-lg text-slate-500 hover:text-slate-700 transition-all duration-300">Take Away</button>
+                </div>
+            </div>
+
+            <div class="p-4 pt-2 flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar flex flex-col gap-4">
+                <div id="section-saved-dinein" class="transition-all duration-300">
+                    <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 border-b border-slate-200/60 pb-1">Meja Makan (Dine In)</h4>
+                    <div id="active-tables-grid" class="grid grid-cols-4 sm:grid-cols-5 gap-2.5"></div>
+                </div>
+                <div id="section-saved-takeaway" class="transition-all duration-300 mt-2">
+                    <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 border-b border-slate-200/60 pb-1">Bungkus / Menunggu (Take Away)</h4>
+                    <div id="active-takeaway-list" class="flex flex-col gap-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Histori Transaksi -->
+    <div id="history-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[480px] max-h-[85vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="history-content">
+            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <div class="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 text-xs border border-blue-100"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    Histori Transaksi
+                </h3>
+                <button onclick="closeHistoryModal()" class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-200 text-slate-500 transition-colors duration-300 active:scale-90"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <div class="p-4 flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar flex flex-col gap-3" id="history-list"></div>
+        </div>
+    </div>
+
+    <!-- Modal Antrean Pesanan Masuk (Queue List) -->
+    <div id="incoming-queue-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[150] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[400px] max-h-[85vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="incoming-queue-content">
+            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-red-50 shrink-0">
+                <h3 class="font-bold text-base text-red-600 flex items-center gap-2">
+                    <i class="fa-solid fa-bell animate-ring"></i> Antrean Pesanan Baru
+                </h3>
+                <button onclick="closeIncomingQueueModal()" class="w-7 h-7 flex items-center justify-center rounded-full bg-white hover:bg-slate-200 text-slate-500 transition-colors shadow-sm border border-slate-200"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <div class="p-4 flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar">
+                <div id="incoming-queue-list" class="flex flex-col gap-3">
+                    <!-- Dimuat via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Review Pesanan Spesifik (Dari Antrean) -->
+    <div id="incoming-order-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[200] hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden transform scale-95 transition-all duration-300" id="incoming-order-content">
+            <div class="bg-red-500 p-5 text-center relative overflow-hidden">
+                <div class="absolute inset-0 opacity-10 flex items-center justify-center"><i class="fa-solid fa-bell text-9xl"></i></div>
+                <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg relative z-10">
+                    <i class="fa-solid fa-bell text-red-500 text-3xl animate-ring"></i>
+                </div>
+                <h3 class="font-extrabold text-xl text-white relative z-10 tracking-tight">REVIEW PESANAN</h3>
+                <p class="text-red-100 text-xs font-medium relative z-10 mt-1">Periksa pesanan masuk dari pelanggan</p>
+            </div>
+            
+            <div class="p-5 flex flex-col gap-4 bg-slate-50">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <p class="text-xs text-slate-500 font-bold uppercase tracking-widest mb-1">Dari Meja</p>
+                    <h2 class="text-3xl font-black text-slate-900" id="incoming-table-num">Meja -</h2>
+                </div>
+                
+                <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-[10px] text-slate-500 font-bold mb-2 pb-2 border-b border-slate-100 flex justify-between">
+                        <span>Rincian Pesanan</span>
+                        <span id="incoming-order-id" class="font-mono text-slate-400">SLF-12345</span>
+                    </p>
+                    <div id="incoming-items-list" class="max-h-32 overflow-y-auto custom-scrollbar flex flex-col gap-1.5">
+                        <!-- Items rendered via JS -->
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-dashed border-slate-200 flex justify-between items-center">
+                        <span class="text-xs font-bold text-slate-600">Total Harga</span>
+                        <span class="text-lg font-black text-emerald-600" id="incoming-order-total">Rp 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-white border-t border-slate-100 flex gap-2">
+                <button onclick="rejectIncomingOrder()" class="w-1/4 py-3 bg-white border-2 border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all duration-300 text-xs px-1">Tolak</button>
+                <button onclick="snoozeIncomingOrder()" class="w-1/4 py-3 bg-white border-2 border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all duration-300 text-xs px-1" title="Tutup pop-up pesanan ini">Simpan</button>
+                <button onclick="acceptIncomingOrder()" class="w-2/4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-extrabold rounded-xl hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/40 transition-all duration-300 flex items-center justify-center gap-1.5 text-xs px-1"><i class="fa-solid fa-check-double"></i> Terima</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal View Settings -->
+    <div id="view-settings-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[320px] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="view-settings-content">
+            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <div class="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center text-slate-700 text-xs border border-slate-200"><i class="fa-solid fa-desktop"></i></div>
+                    Tampilan
+                </h3>
+                <button onclick="closeViewSettings()" class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-200 text-slate-500 transition-colors duration-300 active:scale-90"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <div class="p-4 flex-1 bg-slate-50/50 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-800 mb-2">Model Daftar Menu</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-view-grid" onclick="setViewType('grid')" class="py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs">
+                            <i class="fa-solid fa-border-all text-sm"></i> Grid
+                        </button>
+                        <button id="btn-view-list" onclick="setViewType('list')" class="py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs">
+                            <i class="fa-solid fa-list text-sm"></i> List
+                        </button>
+                    </div>
+                </div>
+                <div id="grid-columns-settings" class="transition-all duration-300">
+                    <label class="block text-xs font-bold text-slate-800 mb-2">Kolom Grid (Kiri ke Kanan)</label>
+                    <div class="flex items-center gap-3 bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+                        <input type="range" id="grid-columns-range" min="1" max="6" value="3" class="w-full accent-emerald-500 h-1.5" oninput="updateGridColumnsDisplay()">
+                        <span id="grid-columns-val" class="font-bold text-sm text-slate-900 w-5 text-center">3</span>
+                    </div>
+                </div>
+            </div>
+            <div class="p-3 bg-white border-t border-slate-100 flex justify-end shrink-0">
+                <button onclick="closeViewSettings()" class="w-full py-2 text-sm bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-bold rounded-lg shadow-btn transition-all duration-300 active:scale-95">Selesai</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Database Settings -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[450px] max-h-[90vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="settings-modal-content">
+            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-cloud text-emerald-500"></i> Database Setup (Cloud)
+                </h3>
+                <button onclick="closeSettingsModal()" class="w-7 h-7 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <div class="p-4 overflow-y-auto custom-scrollbar bg-slate-50/50">
+                
+                <div class="mb-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm transition-all duration-300">
+                    <label class="block text-[11px] font-bold mb-1.5 text-slate-800">Web App URL (Google Apps Script)</label>
+                    <input type="url" id="script-url-input" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:bg-white text-xs text-slate-900" placeholder="https://script.google.com/macros/...">
+                    <p class="text-[9px] text-slate-500 mt-2">Masukan URL Web App dari deployment Apps Script Anda untuk melakukan Full Cloud Sync.</p>
+                </div>
+                
+                <div>
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="block text-[11px] font-bold text-slate-800 uppercase tracking-widest">Kode Code.gs Baru (Full Sync)</label>
+                        <button onclick="copyAppScriptCode()" class="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg transition-colors duration-300 flex items-center gap-1.5 active:scale-95 border border-slate-200">
+                            <i class="fa-regular fa-copy"></i> Salin
+                        </button>
+                    </div>
+                    <div class="rounded-xl overflow-hidden border border-slate-700 bg-[#0d1117] shadow-inner">
+                        <div class="flex items-center gap-1.5 px-3 py-2 bg-[#161b22] border-b border-slate-700/50">
+                            <div class="w-2.5 h-2.5 rounded-full bg-slate-500/80"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-slate-500/80"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-slate-500/80"></div>
+                            <span class="text-slate-400 text-[9px] ml-1 font-mono tracking-wider">Code.gs</span>
+                        </div>
+                        <textarea id="app-script-code" class="w-full h-40 bg-[#0d1117] text-[#c9d1d9] font-mono text-[10px] p-3 resize-none focus:outline-none custom-scrollbar" readonly>
+var API_KEY = "SMARTPOS_SECURE_2024";
+
+function getHeaders(sheet) {
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  return sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) {
+    return h.toString().toLowerCase().trim();
+  });
+}
+
+function initDatabase() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) return;
+  var sheets = ["Produk", "Kategori", "Transaksi", "Hold_Bills", "Users"];
+  var headers = {
+    "Produk": ["id", "nama", "kategori", "harga", "gambar"],
+    "Kategori": ["id", "nama"],
+    "Transaksi": ["id_transaksi", "tanggal", "total_belanja", "uang_dibayar", "kembalian", "tipe_pesanan", "items"],
+    "Hold_Bills": ["id", "order_type", "table_num", "total", "timestamp", "cart"],
+    "Users": ["username", "password", "nama", "role"]
+  };
+
+  sheets.forEach(function(s) {
+    var sheet = ss.getSheetByName(s);
+    if (!sheet) {
+      sheet = ss.insertSheet(s);
+      sheet.appendRow(headers[s]);
+      if(s === "Users") {
+        sheet.appendRow(["admin", "admin123", "Admin Utama", "Owner"]);
+        sheet.appendRow(["kasir", "kasir123", "Kasir Satu", "Kasir"]);
+      }
+    }
+  });
+}
+
+function doGet(e) {
+  if (!e || !e.parameter || Object.keys(e.parameter).length === 0) return ContentService.createTextOutput("INFO: Script aktif. Siap digunakan.");
+  if (e.parameter.api_key !== API_KEY) return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Akses Ditolak!"})).setMimeType(ContentService.MimeType.JSON);
+  
+  try {
+    initDatabase();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (e.parameter.action === 'getData') {
+      
+      var getSheetData = function(sheetName) {
+        var sheet = ss.getSheetByName(sheetName);
+        var data = sheet.getDataRange().getValues();
+        var res = [];
+        if(data.length > 1) {
+          var heads = getHeaders(sheet);
+          for (var i = 1; i < data.length; i++) {
+            if (data[i][0] === "") continue;
+            var obj = {};
+            for (var j = 0; j < heads.length; j++) { if(heads[j] !== "") obj[heads[j]] = data[i][j]; }
+            res.push(obj);
+          }
+        }
+        return res;
+      };
+
+      var prodData = getSheetData("Produk");
+      var catData = getSheetData("Kategori");
+      var holdData = getSheetData("Hold_Bills");
+      
+      var sheetTrx = ss.getSheetByName("Transaksi");
+      var dataTrx = sheetTrx.getDataRange().getValues();
+      var trxResult = [];
+      if(dataTrx.length > 1) {
+        var headTrx = getHeaders(sheetTrx);
+        var startIdx = Math.max(1, dataTrx.length - 30);
+        for(var p = dataTrx.length - 1; p >= startIdx; p--) {
+          if (dataTrx[p][0] === "") continue;
+          var objTrx = {};
+          for (var q = 0; q < headTrx.length; q++) { if(headTrx[q] !== "") objTrx[headTrx[q]] = dataTrx[p][q]; }
+          trxResult.push(objTrx);
+        }
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({
+         status: "success", 
+         products: prodData, 
+         categories: catData, 
+         hold_bills: holdData,
+         transactions: trxResult
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch (error) {
+     return ContentService.createTextOutput(JSON.stringify({status: "error", message: error.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doPost(e) {
+  if (!e || !e.parameter) return ContentService.createTextOutput("Gunakan metode POST.");
+  if (e.parameter.api_key !== API_KEY) return ContentService.createTextOutput(JSON.stringify({result: "error"})).setMimeType(ContentService.MimeType.JSON);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  
+  try {
+    initDatabase();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var action = e.parameter.action;
+
+    if (action === 'login') {
+      var sheet = ss.getSheetByName('Users');
+      var data = sheet.getDataRange().getValues();
+      var username = e.parameter.username;
+      var password = e.parameter.password;
+      for (var i = 1; i < data.length; i++) {
+        if (data[i][0] == username && data[i][1] == password) {
+          return ContentService.createTextOutput(JSON.stringify({
+            "result": "success",
+            "user": { "username": data[i][0], "nama": data[i][2], "role": data[i][3] }
+          })).setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({"result": "error", "message": "Username atau Password salah!"})).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'saveTransaction' || action === 'addProduct' || action === 'addCategory' || action === 'saveHoldBill') {
+      var sheetMap = { 'saveTransaction': 'Transaksi', 'addProduct': 'Produk', 'addCategory': 'Kategori', 'saveHoldBill': 'Hold_Bills' };
+      var sheet = ss.getSheetByName(sheetMap[action]);
+      var headers = getHeaders(sheet);
+      var rowData = [];
+      for (var i = 0; i < headers.length; i++) {
+        var headerName = headers[i];
+        if (headerName === "") rowData.push("");
+        else rowData.push(e.parameter[headerName] !== undefined ? e.parameter[headerName] : "");
+      }
+      sheet.appendRow(rowData);
+      return ContentService.createTextOutput(JSON.stringify({"result": "success"})).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'deleteCategory' || action === 'deleteHoldBill') {
+      var sheetName = action === 'deleteCategory' ? 'Kategori' : 'Hold_Bills';
+      var sheet = ss.getSheetByName(sheetName);
+      var idToDelete = e.parameter.id;
+      var data = sheet.getDataRange().getValues();
+      for(var i = 1; i < data.length; i++) {
+        if(data[i][0] == idToDelete) {
+           sheet.deleteRow(i + 1);
+           break;
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({"result": "success"})).setMimeType(ContentService.MimeType.JSON);
+    }
+
+  } catch(error) {
+     return ContentService.createTextOutput(JSON.stringify({"result": "error", "message": error.toString()})).setMimeType(ContentService.MimeType.JSON);
+  } finally { lock.releaseLock(); }
+}</textarea>
+                    </div>
+                </div>
+
+            </div>
+            <div class="p-3 bg-white border-t border-slate-100 flex justify-end gap-2 shrink-0">
+                <button onclick="closeSettingsModal()" class="px-3 py-1.5 text-xs text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Batal</button>
+                <button onclick="saveSettings()" class="px-4 py-1.5 bg-gradient-to-r from-teal-600 to-emerald-500 text-white font-bold rounded-lg text-xs shadow-btn active:scale-95">Simpan & Sync</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tambah Produk -->
+    <div id="add-menu-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[400px] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="add-menu-content">
+            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <div class="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 text-xs"><i class="fa-solid fa-plus"></i></div>
+                    Tambah Produk Baru
+                </h3>
+                <button onclick="closeAddMenuModal()" class="w-7 h-7 flex items-center justify-center rounded-full bg-white hover:bg-slate-200 text-slate-500 transition-colors shadow-sm"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            
+            <div class="p-4 overflow-y-auto max-h-[70vh] custom-scrollbar">
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Nama Produk <span class="text-red-500">*</span></label>
+                        <input type="text" id="new-menu-name" class="w-full p-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" placeholder="Mis. Kopi Susu Aren">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Kategori <span class="text-red-500">*</span></label>
+                        <select id="new-menu-category" class="w-full p-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer">
+                            <option value="">-- Pilih Kategori --</option>
+                            <!-- Dimuat JS -->
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Harga (Rp) <span class="text-red-500">*</span></label>
+                        <input type="number" id="new-menu-price" class="w-full p-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" placeholder="Mis. 25000">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">URL Gambar</label>
+                        <input type="url" id="new-menu-image" class="w-full p-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" placeholder="https://contoh.com/gambar.jpg">
+                        <p class="text-[9px] text-slate-400 mt-1">Kosongkan jika tidak ada, sistem akan memberikan gambar placeholder.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-slate-100 flex justify-end shrink-0 bg-slate-50">
+                <button id="btn-save-product" onclick="saveNewProduct()" class="w-full py-2.5 bg-gradient-to-r from-teal-600 to-emerald-500 text-white font-bold rounded-lg shadow-btn transition-all duration-300 active:scale-95 flex items-center justify-center gap-2">
+                    <span id="txt-save-product">Simpan ke Cloud</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Manajemen Kategori -->
+    <div id="category-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-500 ease-premium">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[450px] max-h-[85vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-500 ease-premium border border-slate-100" id="category-modal-content">
+            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <div class="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600 text-xs"><i class="fa-solid fa-tags"></i></div>
+                    Manajemen Kategori
+                </h3>
+                <button onclick="closeCategoryModal()" class="w-7 h-7 flex items-center justify-center rounded-full bg-white hover:bg-slate-200 text-slate-500 transition-colors shadow-sm"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            
+            <div class="p-4 shrink-0 border-b border-slate-100 flex gap-2">
+                <input type="text" id="new-category-input" class="flex-1 p-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20" placeholder="Kategori baru (Mis. Dessert)">
+                <button id="btn-save-category" onclick="saveNewCategory()" class="px-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition-colors active:scale-95 flex items-center justify-center">
+                    <span id="txt-save-category">Tambah</span>
+                </button>
+            </div>
+
+            <div class="p-4 flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar">
+                <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Daftar Kategori</h4>
+                <div id="category-list-manager" class="flex flex-col gap-2">
+                    <!-- Dimuat JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm / Alert Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden transform scale-95 transition-all duration-300" id="confirm-content">
+            <div class="p-6 text-center">
+                <div class="w-16 h-16 rounded-full bg-red-100 text-red-500 flex items-center justify-center mx-auto mb-4" id="confirm-icon-box">
+                    <i class="fa-solid fa-triangle-exclamation text-3xl" id="confirm-icon"></i>
+                </div>
+                <h3 class="font-extrabold text-lg text-slate-900 mb-2" id="confirm-title">Konfirmasi</h3>
+                <p class="text-sm text-slate-500" id="confirm-message">Apakah Anda yakin ingin melakukan tindakan ini?</p>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                <button id="btn-confirm-cancel" class="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors">Batal</button>
+                <button id="btn-confirm-ok" class="flex-1 py-2.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 shadow-md transition-colors shadow-red-500/30">Ya, Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md text-white px-3 md:px-4 py-2 md:py-2.5 rounded-xl shadow-premium flex items-center gap-2 z-[100000] transition-all duration-500 ease-premium transform translate-y-20 opacity-0 pointer-events-none w-[90%] md:w-auto max-w-sm">
+        <i id="toast-icon" class="fa-solid fa-circle-info text-sm shrink-0"></i>
+        <span id="toast-message" class="font-bold text-[11px] md:text-xs tracking-wide line-clamp-2">Pesan</span>
+    </div>
+
+    <!-- Area Cetak -->
+    <div id="print-receipt-area" class="hidden"></div>
+
+    <script>
+        const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYR5t6e7XdzmdzZ1e84N60WaLmwWSbOG4x3E30TXPMNFLSMnRSIvuLpwzfJ4nhMrk4/exec'; 
+        const APP_API_KEY = 'SMARTPOS_SECURE_2024';
+        
+        let currentUser = null; 
+
+        let products = [];
+        let categories = [];
+        let cart = [];
+        let activeOrders = []; 
+        let transactionHistory = [];
+        
+        let taxRate = 0.11; 
+        let activeCategory = 'Semua Menu';
+        let orderType = 'Dine In'; 
+        let selectedTable = null; 
+        let qrSelectedTable = 'general'; 
+        
+        let isSplitPaymentMode = false;
+        let splitCartSelections = {}; 
+        
+        let isSelfOrderMode = false;
+        let pollingInterval = null; 
+
+        // Variables Customer Status
+        let mySelfOrders = JSON.parse(localStorage.getItem('pos_my_orders') || '[]');
+        let customerPollingInterval = null;
+
+        // Variables for Gatekeeper (Pesanan Masuk)
+        let unconfirmedOrders = [];
+        let currentReviewOrderId = null;
+        let acknowledgedOrders = JSON.parse(localStorage.getItem('pos_ack_orders') || '[]');
+        let tableTokens = JSON.parse(localStorage.getItem('pos_table_tokens') || '{}');
+
+        let savedUrl = localStorage.getItem('pos_script_url');
+        let appConfig = { scriptUrl: savedUrl || DEFAULT_SCRIPT_URL };
+
+        let isSplitView = localStorage.getItem('pos_split_view') === 'true';
+        let viewType = localStorage.getItem('pos_view_type') || 'grid';
+        let gridCols = parseInt(localStorage.getItem('pos_grid_cols')) || 3; 
+
+        const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+
+        async function sendToGas(data) {
+            if (!appConfig.scriptUrl) throw new Error("URL Database belum diatur!");
+            const params = new URLSearchParams();
+            for (const key in data) { params.append(key, data[key]); }
+
+            try {
+                const response = await fetch(appConfig.scriptUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params.toString()
+                });
+                return await response.json();
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                throw error;
+            }
+        }
+
+        let confirmActionCallback = null;
+        function customConfirm(title, message, callback) {
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-message').innerText = message;
+            
+            document.getElementById('confirm-icon-box').className = "w-16 h-16 rounded-full bg-red-100 text-red-500 flex items-center justify-center mx-auto mb-4";
+            document.getElementById('confirm-icon').className = "fa-solid fa-triangle-exclamation text-3xl";
+            
+            document.getElementById('btn-confirm-cancel').style.display = 'block';
+            document.getElementById('btn-confirm-ok').className = "flex-1 py-2.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 shadow-md transition-colors shadow-red-500/30";
+            document.getElementById('btn-confirm-ok').innerText = "Ya, Lanjutkan";
+
+            confirmActionCallback = callback;
+            showModalConfirm();
+        }
+
+        function customAlert(title, message, type='success') {
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-message').innerText = message;
+            
+            const iconBox = document.getElementById('confirm-icon-box');
+            const icon = document.getElementById('confirm-icon');
+            
+            if(type === 'success') {
+                iconBox.className = "w-16 h-16 rounded-full bg-emerald-100 text-emerald-500 flex items-center justify-center mx-auto mb-4";
+                icon.className = "fa-solid fa-circle-check text-3xl";
+            } else {
+                iconBox.className = "w-16 h-16 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center mx-auto mb-4";
+                icon.className = "fa-solid fa-circle-info text-3xl";
+            }
+            
+            document.getElementById('btn-confirm-cancel').style.display = 'none';
+            document.getElementById('btn-confirm-ok').className = "flex-1 py-2.5 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-900 shadow-md transition-colors";
+            document.getElementById('btn-confirm-ok').innerText = "Tutup";
+
+            confirmActionCallback = null;
+            showModalConfirm();
+        }
+
+        function showModalConfirm() {
+            const modal = document.getElementById('confirm-modal');
+            const content = document.getElementById('confirm-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95'); content.classList.add('scale-100');
+            });
+        }
+        
+        document.getElementById('btn-confirm-cancel').onclick = closeConfirmModal;
+        document.getElementById('btn-confirm-ok').onclick = () => {
+            closeConfirmModal();
+            if(confirmActionCallback) setTimeout(confirmActionCallback, 300);
+        };
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            const content = document.getElementById('confirm-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); }, 300);
+        }
+
+        async function initializeApp() {
+            let urlSearch = window.location.search;
+            if (!urlSearch && window.location.hash.includes('?')) {
+                urlSearch = window.location.hash.substring(window.location.hash.indexOf('?'));
+            }
+            const urlParams = new URLSearchParams(urlSearch);
+            
+            if (urlParams.get('mode') === 'selforder') {
+                isSelfOrderMode = true;
+                selectedTable = urlParams.get('table');
+                orderType = selectedTable === 'general' ? 'Take Away' : 'Dine In';
+                
+                if (urlParams.get('db')) appConfig.scriptUrl = decodeURIComponent(urlParams.get('db'));
+                
+                const loginScreen = document.getElementById('login-screen');
+                loginScreen.style.transition = 'none'; 
+                loginScreen.style.display = 'none';
+
+                setupSelfOrderUI();
+                await fetchInitialData();
+            } else {
+                const savedUser = localStorage.getItem('pos_current_user');
+                const loginScreen = document.getElementById('login-screen');
+                
+                if (savedUser) {
+                    currentUser = JSON.parse(savedUser);
+                    document.getElementById('admin-profile-name').innerText = currentUser.nama;
+                    document.getElementById('admin-profile-role').innerText = currentUser.role;
+                    
+                    loginScreen.classList.add('opacity-0');
+                    setTimeout(() => { loginScreen.classList.add('hidden'); }, 500);
+                    
+                    applySplitView();
+                    startAdminPolling(); 
+                    updateConnectionStatus();
+                    
+                    if(document.getElementById('script-url-input')) {
+                        document.getElementById('script-url-input').value = appConfig.scriptUrl;
+                    }
+                    await fetchInitialData();
+                } else {
+                    loginScreen.classList.remove('hidden', 'opacity-0');
+                }
+            }
+            
+            document.getElementById('search-input').addEventListener('input', (e) => renderProducts(e.target.value));
+        }
+
+        async function handleLogin() {
+            const u = document.getElementById('login-username').value.trim();
+            const p = document.getElementById('login-password').value.trim();
+            
+            if(!u || !p) { showToast("Username dan Password wajib diisi!", "error"); return; }
+            
+            if(!appConfig.scriptUrl) {
+                if(u === 'admin' && p === 'admin') {
+                    currentUser = { username: 'admin', nama: 'Admin Lokal', role: 'Owner' };
+                    localStorage.setItem('pos_current_user', JSON.stringify(currentUser));
+                    
+                    document.getElementById('login-screen').classList.add('opacity-0');
+                    setTimeout(() => {
+                        document.getElementById('login-screen').classList.add('hidden');
+                        initializeApp();
+                    }, 500);
+                    showToast("Login Lokal Berhasil! Harap atur URL Cloud Database.", "success");
+                    return;
+                }
+                showToast("URL Cloud Database belum diatur! (Atau gunakan admin/admin untuk akses lokal)", "error");
+                return;
+            }
+
+            const btn = document.getElementById('btn-login');
+            const txt = document.getElementById('txt-login');
+            btn.disabled = true;
+            txt.innerHTML = '<div class="loader loader-white mr-2 inline-block align-middle"></div> Memverifikasi...';
+
+            try {
+                const response = await fetch(appConfig.scriptUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `action=login&api_key=${APP_API_KEY}&username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`
+                });
+                const data = await response.json();
+                
+                if(data.result === 'success') {
+                    currentUser = data.user;
+                    localStorage.setItem('pos_current_user', JSON.stringify(currentUser));
+                    
+                    document.getElementById('login-screen').classList.add('opacity-0');
+                    setTimeout(() => {
+                        document.getElementById('login-screen').classList.add('hidden');
+                        initializeApp(); 
+                    }, 500);
+                    showToast(`Selamat datang, ${currentUser.nama}!`, "success");
+                } else {
+                    showToast(data.message || "Username atau Password salah!", "error");
+                }
+            } catch(e) {
+                showToast("Gagal terhubung ke server.", "error");
+            }
+            
+            btn.disabled = false;
+            txt.innerText = 'Masuk ke Sistem';
+        }
+
+        function handleLogoutConfirm() {
+            customConfirm("Keluar Sistem", "Anda yakin ingin keluar (Logout)?", () => {
+                localStorage.removeItem('pos_current_user');
+                currentUser = null;
+                location.reload();
+            });
+        }
+
+        function setupSelfOrderUI() {
+            document.body.classList.add('self-order-mode');
+            
+            const tableText = selectedTable === 'general' ? 'Bungkus / Take Away' : `Meja ${selectedTable}`;
+            document.getElementById('customer-table-text').innerText = tableText;
+
+            const header = document.getElementById('main-header');
+            header.classList.remove('bg-white/80', 'border-slate-200');
+            header.classList.add('bg-emerald-600', 'border-emerald-700'); 
+            
+            const titleEl = document.querySelector('#sidebar-toggle-btn h1');
+            titleEl.innerText = "Menu Resto";
+            titleEl.classList.replace('text-slate-900', 'text-white');
+            
+            const subtitleEl = document.querySelector('#sidebar-toggle-btn p');
+            subtitleEl.innerText = "Order dari HP";
+            subtitleEl.classList.replace('text-emerald-500', 'text-emerald-100');
+
+            const sidebarToggle = document.getElementById('sidebar-toggle-btn');
+            if(sidebarToggle) {
+                sidebarToggle.onclick = null;
+                sidebarToggle.style.pointerEvents = 'none';
+                sidebarToggle.querySelector('div').classList.remove('group-hover:scale-105', 'active:scale-95', 'bg-slate-900');
+                sidebarToggle.querySelector('div').classList.add('bg-emerald-700');
+            }
+            
+            const checkoutBtn = document.getElementById('checkout-btn');
+            checkoutBtn.removeAttribute('onclick'); 
+            checkoutBtn.innerHTML = '<span class="relative z-10"><i class="fa-solid fa-paper-plane mr-1"></i> Kirim Pesanan</span>';
+            checkoutBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                sendSelfOrderToKitchen();
+            });
+
+            const statusBtn = document.getElementById('customer-status-btn');
+            if(statusBtn) {
+                statusBtn.classList.remove('hidden');
+                statusBtn.classList.add('flex');
+            }
+            updateCustomerStatusBadge();
+            startCustomerPolling();
+
+            const custDisplay = document.getElementById('customer-table-display');
+            if(custDisplay) {
+                custDisplay.classList.remove('hidden');
+                custDisplay.classList.add('flex', 'bg-white', 'border-emerald-100');
+                custDisplay.querySelector('i').classList.replace('text-emerald-600', 'text-emerald-500');
+            }
+        }
+
+        async function sendSelfOrderToKitchen() {
+            if (cart.length === 0) return;
+            
+            const checkoutBtn = document.getElementById('checkout-btn');
+            checkoutBtn.disabled = true;
+            checkoutBtn.innerHTML = '<span class="relative z-10"><div class="loader loader-white scale-75 inline-block mr-1"></div> Mengirim...</span>';
+            
+            const orderId = 'SLF-' + Date.now(); 
+            const { total } = calculateTotals(cart);
+            const timestamp = new Date().toISOString();
+            
+            if (!appConfig.scriptUrl) {
+                showToast("Sistem Kasir belum online.", "error");
+                checkoutBtn.disabled = false;
+                checkoutBtn.innerHTML = '<span class="relative z-10"><i class="fa-solid fa-paper-plane mr-1"></i> Kirim Pesanan</span>';
+                return;
+            }
+
+            try {
+                await sendToGas({ 
+                    action: 'saveHoldBill', 
+                    api_key: APP_API_KEY, 
+                    id: orderId, 
+                    order_type: orderType, 
+                    table_num: selectedTable === 'general' ? '' : selectedTable, 
+                    total: total, 
+                    timestamp: timestamp, 
+                    cart: JSON.stringify(cart) 
+                });
+                
+                const newMyOrder = {
+                    id: orderId,
+                    date: timestamp,
+                    total: total,
+                    items: cart.map(c => `${c.qty}x ${c.product.nama}`).join(', '),
+                    status: 'Menunggu'
+                };
+                mySelfOrders.unshift(newMyOrder);
+                localStorage.setItem('pos_my_orders', JSON.stringify(mySelfOrders));
+                updateCustomerStatusBadge();
+
+                showToast("Terkirim!", "success");
+                
+                cart = [];
+                renderCart(); 
+                
+                if(window.innerWidth < 1024) toggleCart();
+                
+                customAlert("Pesanan Terkirim!", "Pesanan telah masuk ke Kasir. Anda dapat memantau orderan di tombol 'Status Pesanan' (kiri atas).\n\nAnda dapat menambahkan menu lagi jika ingin memesan tambahan.", "success");
+                
+            } catch(e) {
+                console.error(e);
+                showToast("Gagal mengirim pesanan. Periksa internet Anda.", "error");
+            } finally {
+                checkoutBtn.disabled = cart.length === 0;
+                if(cart.length === 0) checkoutBtn.classList.add('opacity-50');
+                else checkoutBtn.classList.remove('opacity-50');
+                
+                checkoutBtn.innerHTML = '<span class="relative z-10"><i class="fa-solid fa-paper-plane mr-1"></i> Kirim Pesanan</span>';
+            }
+        }
+
+        // --- SISTEM SUPER SYNC & ANTREAN MASUK ---
+        function startAdminPolling() {
+            pollingInterval = setInterval(async () => {
+                if(!appConfig.scriptUrl) return;
+                try {
+                    const response = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}`);
+                    if(!response.ok) return;
+                    const data = await response.json();
+                    
+                    if(data.status === 'success') {
+                        // 1. SYNC: Hold Bills & Antrean Masuk
+                        const incomingOrders = (data.hold_bills || []).map(h => ({
+                            id: h.id, 
+                            orderType: h.order_type, 
+                            table: (h.table_num ? parseInt(h.table_num) : null), 
+                            total: parseInt(h.total)||0, 
+                            timestamp: h.timestamp, 
+                            cart: JSON.parse(h.cart || '[]')
+                        }));
+                        
+                        const selfOrders = incomingOrders.filter(o => o.id.startsWith('SLF-'));
+                        const newlyArrived = selfOrders.filter(o => !acknowledgedOrders.includes(o.id));
+                        
+                        if(newlyArrived.length > 0) {
+                            let newlyAddedToQueue = false;
+                            newlyArrived.forEach(no => {
+                                if(!unconfirmedOrders.find(uo => uo.id === no.id)) {
+                                    unconfirmedOrders.push(no);
+                                    newlyAddedToQueue = true;
+                                }
+                            });
+                            
+                            if (newlyAddedToQueue) {
+                                updateIncomingOrderAlert();
+                            }
+                        }
+
+                        const finalActiveOrders = incomingOrders.filter(o => !unconfirmedOrders.find(uo => uo.id === o.id));
+                        if (JSON.stringify(activeOrders) !== JSON.stringify(finalActiveOrders)) {
+                            activeOrders = finalActiveOrders;
+                            updateActiveOrdersBadge();
+                            if(!document.getElementById('active-orders-modal').classList.contains('hidden')) {
+                                renderActiveOrders();
+                            }
+                            if(!document.getElementById('table-modal').classList.contains('hidden')) {
+                                renderTables();
+                            }
+                            if(!document.getElementById('qr-modal').classList.contains('hidden')) {
+                                renderQRTableOptions();
+                            }
+                        }
+
+                        // 2. SYNC: Transaksi Harian
+                        if (data.transactions) {
+                            const newHistory = (data.transactions || []).map(t => ({
+                                id: t.id_transaksi,
+                                date: t.tanggal,
+                                total: parseInt(t.total_belanja)||0,
+                                paymentMethod: (t.tipe_pesanan || '').split(' - ').pop(), 
+                                orderType: t.tipe_pesanan,
+                                itemsRaw: t.items 
+                            })).reverse();
+                            
+                            if(JSON.stringify(transactionHistory) !== JSON.stringify(newHistory)) {
+                                transactionHistory = newHistory;
+                                if(!document.getElementById('history-modal').classList.contains('hidden')) {
+                                    renderHistory();
+                                }
+                            }
+                        }
+
+                        // 3. SYNC: Menu Produk
+                        if (data.products) {
+                            const newProducts = (data.products || []).map(p => ({
+                                id: String(p.id), nama: String(p.nama), kategori: String(p.kategori), 
+                                harga: parseInt(p.harga)||0, gambar: String(p.gambar||'')
+                            }));
+                            if(JSON.stringify(products) !== JSON.stringify(newProducts)) {
+                                products = newProducts;
+                                renderCategories(); 
+                                renderProducts(document.getElementById('search-input').value);
+                            }
+                        }
+
+                        // 4. SYNC: Kategori
+                        if (data.categories) {
+                            const newCats = (data.categories || []).map(c => ({ id: String(c.id), nama: String(c.nama) }));
+                            if (JSON.stringify(categories) !== JSON.stringify(newCats)) {
+                                categories = newCats;
+                                renderCategories();
+                                if(!document.getElementById('category-modal').classList.contains('hidden')) {
+                                    renderCategoryManager();
+                                }
+                            }
+                        }
+                    }
+                } catch(e) {
+                    console.warn("Silent polling failed", e);
+                }
+            }, 5000); 
+        }
+
+        function updateIncomingOrderAlert() {
+            const btn = document.getElementById('new-order-alert-btn');
+            if(unconfirmedOrders.length > 0) {
+                btn.classList.remove('hidden');
+                document.getElementById('new-order-alert-text').innerText = `${unconfirmedOrders.length} Antrean`;
+            } else {
+                btn.classList.add('hidden');
+            }
+        }
+
+        function openIncomingQueueModal() {
+            renderIncomingQueue();
+            const modal = document.getElementById('incoming-queue-modal');
+            const content = document.getElementById('incoming-queue-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95'); content.classList.add('scale-100');
+            });
+        }
+
+        function closeIncomingQueueModal() {
+            const modal = document.getElementById('incoming-queue-modal');
+            const content = document.getElementById('incoming-queue-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 500);
+        }
+
+        function renderIncomingQueue() {
+            const list = document.getElementById('incoming-queue-list');
+            if (unconfirmedOrders.length === 0) {
+                list.innerHTML = `<div class="text-center py-6 text-[11px] font-bold text-slate-400">Tidak ada antrean pesanan baru.</div>`;
+                setTimeout(() => closeIncomingQueueModal(), 1500);
+                return;
+            }
+
+            list.innerHTML = unconfirmedOrders.map(order => {
+                const timeStr = new Date(order.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                const tableText = order.table ? `Meja ${order.table}` : 'Bungkus / Take Away';
+                
+                return `
+                    <div class="bg-white border border-red-200 rounded-xl p-3 shadow-sm relative overflow-hidden group hover:border-red-300 transition-all cursor-pointer" onclick="reviewSpecificOrder('${order.id}')">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                        <div class="flex justify-between items-start mb-2 pl-2">
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-800">${tableText}</p>
+                                <p class="text-[9px] font-bold text-slate-400 mb-0.5">${order.id}</p>
+                            </div>
+                            <span class="text-[9px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">${timeStr}</span>
+                        </div>
+                        <div class="pl-2 border-t border-slate-100 pt-2 mt-1 flex justify-between items-center">
+                            <span class="text-[10px] text-slate-600 font-medium">${order.cart.length} macam menu</span>
+                            <span class="text-xs font-black text-slate-900">${formatRupiah(order.total)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function reviewSpecificOrder(id) {
+            const order = unconfirmedOrders.find(o => o.id === id);
+            if (!order) return;
+            
+            currentReviewOrderId = order.id;
+
+            document.getElementById('incoming-table-num').innerText = order.table ? `Meja ${order.table}` : 'Bungkus / Take Away';
+            document.getElementById('incoming-order-id').innerText = order.id;
+            document.getElementById('incoming-order-total').innerText = formatRupiah(order.total);
+            
+            const list = document.getElementById('incoming-items-list');
+            list.innerHTML = order.cart.map(item => `
+                <div class="flex justify-between items-start text-xs border-b border-slate-100 py-2">
+                    <span class="font-bold text-slate-800 w-2/3">${item.qty}x ${item.product.nama}</span>
+                    <span class="text-slate-500 font-semibold w-1/3 text-right">${formatRupiah(item.product.harga * item.qty)}</span>
+                </div>
+            `).join('');
+
+            const modal = document.getElementById('incoming-order-modal');
+            const content = document.getElementById('incoming-order-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95'); content.classList.add('scale-100');
+            });
+        }
+
+        function acceptIncomingOrder() {
+            const index = unconfirmedOrders.findIndex(o => o.id === currentReviewOrderId);
+            if(index === -1) return;
+            
+            const order = unconfirmedOrders.splice(index, 1)[0]; 
+            
+            acknowledgedOrders.push(order.id);
+            localStorage.setItem('pos_ack_orders', JSON.stringify(acknowledgedOrders));
+            
+            activeOrders.push(order);
+            updateIncomingOrderAlert();
+            updateActiveOrdersBadge();
+            
+            if(!document.getElementById('active-orders-modal').classList.contains('hidden')) renderActiveOrders();
+            
+            closeIncomingOrderModal(() => {
+                showToast("Pesanan Diterima", "success");
+                if(!document.getElementById('incoming-queue-modal').classList.contains('hidden')) {
+                    renderIncomingQueue();
+                }
+            });
+        }
+
+        function rejectIncomingOrder() {
+            const index = unconfirmedOrders.findIndex(o => o.id === currentReviewOrderId);
+            if(index === -1) return;
+            
+            customConfirm("Tolak Pesanan Ini?", "Pesanan akan langsung dihapus. Lanjutkan?", async () => {
+                const order = unconfirmedOrders.splice(index, 1)[0];
+                
+                acknowledgedOrders.push(order.id);
+                localStorage.setItem('pos_ack_orders', JSON.stringify(acknowledgedOrders));
+
+                if (appConfig.scriptUrl) {
+                    try { await sendToGas({ action: 'deleteHoldBill', api_key: APP_API_KEY, id: order.id }); } 
+                    catch(e) { console.error("Hapus server gagal", e); }
+                }
+
+                updateIncomingOrderAlert();
+
+                closeIncomingOrderModal(() => {
+                    showToast("Pesanan ditolak.", "info");
+                    if(!document.getElementById('incoming-queue-modal').classList.contains('hidden')) {
+                        renderIncomingQueue();
+                    }
+                });
+            });
+        }
+
+        function snoozeIncomingOrder() {
+            closeIncomingOrderModal(() => {
+                showToast("Pesanan disimpan di Antrean Lonceng.", "info");
+                if(!document.getElementById('incoming-queue-modal').classList.contains('hidden')) {
+                    renderIncomingQueue();
+                }
+            });
+        }
+
+        function closeIncomingOrderModal(callback = null) {
+            const modal = document.getElementById('incoming-order-modal');
+            const content = document.getElementById('incoming-order-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => { 
+                modal.classList.add('hidden'); 
+                if(callback) callback();
+            }, 300);
+        }
+
+        function updateConnectionStatus() {
+            const statusEl = document.getElementById('connection-status');
+            if (!appConfig.scriptUrl) {
+                statusEl.innerHTML = `<div class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div> <span class="text-slate-600 hidden sm:inline">Belum Terhubung</span>`;
+            } else {
+                statusEl.innerHTML = `<div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> <span class="text-slate-600 hidden sm:inline">Terhubung</span>`;
+            }
+        }
+
+        async function fetchInitialData() {
+            const loader = document.getElementById('product-loading');
+            loader.classList.remove('hidden'); loader.classList.add('flex');
+
+            if (!appConfig.scriptUrl) {
+                loader.classList.add('hidden'); loader.classList.remove('flex');
+                if(!isSelfOrderMode) showToast("Silakan atur URL Database (Cloud) di menu Sistem.", "error");
+                document.getElementById('products-grid').innerHTML = `<div class="col-span-full text-center py-10 text-slate-500 font-medium text-xs md:text-sm w-full"><i class="fa-solid fa-cloud-arrow-down text-3xl mb-3 text-slate-300"></i><br>Database Belum Diatur</div>`;
+                return;
+            }
+
+            try {
+                const response = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}`);
+                if(!response.ok) throw new Error('Gagal menghubungkan ke server.');
+                
+                const data = await response.json();
+                
+                if(data.status === 'success') {
+                    products = (data.products || []).map(p => ({
+                        id: String(p.id), nama: String(p.nama), kategori: String(p.kategori), 
+                        harga: parseInt(p.harga)||0, gambar: String(p.gambar||'')
+                    }));
+                    
+                    categories = (data.categories || []).map(c => ({ id: String(c.id), nama: String(c.nama) }));
+                    
+                    activeOrders = (data.hold_bills || []).map(h => ({
+                        id: h.id, 
+                        orderType: h.order_type, 
+                        table: (h.table_num ? parseInt(h.table_num) : null), 
+                        total: parseInt(h.total)||0, 
+                        timestamp: h.timestamp, 
+                        cart: JSON.parse(h.cart || '[]')
+                    }));
+
+                    transactionHistory = (data.transactions || []).map(t => ({
+                        id: t.id_transaksi,
+                        date: t.tanggal,
+                        total: parseInt(t.total_belanja)||0,
+                        paymentMethod: (t.tipe_pesanan || '').split(' - ').pop(), 
+                        orderType: t.tipe_pesanan,
+                        itemsRaw: t.items 
+                    })).reverse(); 
+
+                } else throw new Error(data.message);
+
+            } catch (error) {
+                console.error(error);
+                showToast("Gagal menyinkronisasi dengan Server.", "error");
+            } finally {
+                loader.classList.add('hidden'); loader.classList.remove('flex');
+                renderCategories(); 
+                renderProducts();
+                updateActiveOrdersBadge();
+            }
+        }
+
+        function openCategoryModal() {
+            renderCategoryManager();
+            const modal = document.getElementById('category-modal');
+            const content = document.getElementById('category-modal-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95'); content.classList.add('scale-100');
+            });
+        }
+
+        function closeCategoryModal() {
+            const modal = document.getElementById('category-modal');
+            const content = document.getElementById('category-modal-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 500);
+        }
+
+        function renderCategoryManager() {
+            const list = document.getElementById('category-list-manager');
+            list.innerHTML = '';
+            
+            if(categories.length === 0) {
+                list.innerHTML = `<div class="text-center py-4 text-[10px] text-slate-400">Belum ada kategori.</div>`;
+                return;
+            }
+
+            categories.forEach(cat => {
+                const count = products.filter(p => p.kategori === cat.nama).length;
+                
+                list.innerHTML += `
+                    <div class="flex justify-between items-center bg-white border border-slate-200 p-2.5 rounded-lg shadow-sm">
+                        <div>
+                            <p class="font-bold text-xs text-slate-800">${cat.nama}</p>
+                            <p class="text-[9px] text-slate-500">${count} Menu</p>
+                        </div>
+                        <button onclick="executeDeleteCategory('${cat.id}', ${count})" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-md hover:bg-red-100 transition-colors">
+                            <i class="fa-solid fa-trash-can text-[10px]"></i>
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        async function saveNewCategory() {
+            const input = document.getElementById('new-category-input');
+            const name = input.value.trim();
+            if(!name) { showToast("Nama kategori kosong", "error"); return; }
+            
+            if(categories.some(c => c.nama.toLowerCase() === name.toLowerCase())) {
+                showToast("Kategori sudah ada", "error"); return;
+            }
+
+            const btn = document.getElementById('btn-save-category');
+            const txt = document.getElementById('txt-save-category');
+            btn.disabled = true; txt.innerHTML = '<div class="loader loader-white scale-75"></div>';
+
+            const newId = 'C' + Date.now().toString().slice(-6);
+            
+            if (appConfig.scriptUrl) {
+                try {
+                    await sendToGas({ action: 'addCategory', api_key: APP_API_KEY, id: newId, nama: name });
+                    categories.push({ id: newId, nama: name });
+                    showToast("Kategori ditambahkan!", "success");
+                    input.value = '';
+                    renderCategoryManager();
+                    renderCategories(); 
+                } catch(e) {
+                    showToast("Gagal menyimpan ke server", "error");
+                }
+            } else {
+                showToast("URL Database belum diatur.", "error");
+            }
+            btn.disabled = false; txt.innerText = 'Tambah';
+        }
+
+        function executeDeleteCategory(catId, count) {
+            if(count > 0) {
+                customAlert("Gagal Menghapus", "Kategori tidak bisa dihapus karena masih digunakan.", "error");
+                return;
+            }
+
+            customConfirm("Hapus Kategori", "Hapus permanen dari Cloud?", async () => {
+                if (appConfig.scriptUrl) {
+                    try {
+                        await sendToGas({ action: 'deleteCategory', api_key: APP_API_KEY, id: catId });
+                        categories = categories.filter(c => c.id !== catId);
+                        showToast("Kategori berhasil dihapus", "success");
+                        renderCategoryManager();
+                        renderCategories();
+                    } catch(e) {
+                        showToast("Gagal menghapus di server", "error");
+                    }
+                }
+            });
+        }
+
+        function openAddMenuModal() {
+            const select = document.getElementById('new-menu-category');
+            select.innerHTML = '<option value="">-- Pilih Kategori --</option>' + categories.map(c => `<option value="${c.nama}">${c.nama}</option>`).join('');
+
+            const modal = document.getElementById('add-menu-modal');
+            const content = document.getElementById('add-menu-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95'); content.classList.add('scale-100');
+            });
+        }
+
+        function closeAddMenuModal() {
+            const modal = document.getElementById('add-menu-modal');
+            const content = document.getElementById('add-menu-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.getElementById('new-menu-name').value = '';
+                document.getElementById('new-menu-price').value = '';
+                document.getElementById('new-menu-image').value = '';
+            }, 500);
+        }
+
+        async function saveNewProduct() {
+            const name = document.getElementById('new-menu-name').value.trim();
+            const category = document.getElementById('new-menu-category').value;
+            const price = parseInt(document.getElementById('new-menu-price').value);
+            const image = document.getElementById('new-menu-image').value.trim();
+
+            if (!name || !category || isNaN(price)) {
+                showToast("Lengkapi form nama, kategori & harga!", "error");
+                return;
+            }
+
+            const btn = document.getElementById('btn-save-product');
+            const txt = document.getElementById('txt-save-product');
+            btn.disabled = true;
+            txt.innerHTML = '<div class="loader loader-white mr-2 inline-block align-middle"></div> Menyimpan...';
+
+            const newId = 'P' + Date.now().toString().slice(-6);
+            const productData = { id: String(newId), nama: String(name), kategori: String(category), harga: price, gambar: String(image) };
+
+            if (appConfig.scriptUrl) {
+                try {
+                    await sendToGas({ action: 'addProduct', api_key: APP_API_KEY, ...productData });
+                    products.push(productData);
+                    showToast("Produk tersimpan di Cloud!", "success");
+                    closeAddMenuModal();
+                    renderCategories();
+                    renderProducts();
+                } catch (e) {
+                    showToast("Gagal menyimpan ke server.", "error");
+                }
+            } else {
+                showToast("URL Database belum diatur.", "error");
+            }
+            btn.disabled = false;
+            txt.innerText = 'Simpan ke Cloud';
+        }
+
+        function renderCategories() {
+            const container = document.getElementById('category-container');
+            const usedCats = [...new Set(products.map(p => p.kategori))];
+            const masterCats = categories.map(c => c.nama);
+            const combinedCats = [...new Set([...usedCats, ...masterCats])];
+            const cats = ['Semua Menu', ...combinedCats];
+            
+            container.innerHTML = cats.map(cat => {
+                const isActive = cat === activeCategory;
+                const activeClasses = "bg-gradient-to-r from-teal-600 to-emerald-500 text-white shadow-btn border-none";
+                const inactiveClasses = "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50";
+                return `<button onclick="setCategory('${cat}')" class="category-btn snap-start px-3 md:px-4 py-1.5 rounded-full text-[10px] md:text-xs font-bold whitespace-nowrap transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 ${isActive ? activeClasses : inactiveClasses}">${cat}</button>`;
+            }).join('');
+        }
+
+        function setCategory(cat) {
+            activeCategory = cat;
+            renderCategories();
+            renderProducts(document.getElementById('search-input').value);
+        }
+
+        function renderProducts(searchQuery = '') {
+            const grid = document.getElementById('products-grid');
+            grid.innerHTML = '';
+            
+            let filtered = products.filter(p => p.nama.toLowerCase().includes(searchQuery.toLowerCase()));
+            if(activeCategory !== 'Semua Menu') filtered = filtered.filter(p => p.kategori === activeCategory);
+
+            if(filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 font-medium text-xs md:text-sm w-full">Menu tidak ditemukan.</div>`;
+                grid.style.removeProperty('grid-template-columns');
+                return;
+            }
+            
+            applyGridStyle();
+
+            filtered.forEach(product => {
+                const card = document.createElement('div');
+                card.className = "product-card bg-white rounded-xl md:rounded-2xl p-1.5 md:p-2 shadow-sm hover:shadow-premium-hover hover:border-slate-300 hover:-translate-y-0.5 transition-all duration-500 ease-premium cursor-pointer group flex flex-col h-full border border-slate-100 active:scale-95";
+                card.onclick = () => addToCart(product);
+                
+                card.innerHTML = `
+                    <div class="img-container relative w-full aspect-square max-h-20 sm:max-h-24 md:max-h-32 rounded-lg md:rounded-xl overflow-hidden mb-1.5 md:mb-2 bg-slate-100 shrink-0 transition-all duration-300 border border-slate-50">
+                        <img src="${product.gambar}" alt="${product.nama}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-premium" onerror="this.src='https://placehold.co/200x200/f1f5f9/94a3b8?text=No+Image'">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-premium"></div>
+                    </div>
+                    <div class="info-container px-1 pb-1 flex flex-col flex-1 justify-between transition-all duration-300">
+                        <div class="info-text">
+                            <h3 class="font-bold text-slate-800 text-[10px] md:text-xs leading-tight mb-1 group-hover:text-emerald-600 transition-colors duration-300 line-clamp-2">${product.nama}</h3>
+                        </div>
+                        <div class="flex justify-between items-center w-full mt-auto">
+                            <div class="font-extrabold text-xs md:text-sm text-slate-900 tracking-tight">${formatRupiah(product.harga)}</div>
+                            <div class="list-add-btn hidden bg-gradient-to-r from-teal-600 to-emerald-500 text-white w-6 h-6 rounded-full items-center justify-center shadow-md group-active:scale-90 transition-transform"><i class="fa-solid fa-plus text-[10px]"></i></div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function setOrderType(type, skipModal = false) {
+            orderType = type;
+            const btnDineIn = document.getElementById('btn-dine-in');
+            const btnTakeAway = document.getElementById('btn-take-away');
+
+            if(type === 'Dine In') {
+                btnDineIn.className = "w-10 h-9 md:w-12 md:h-10 flex flex-col items-center justify-center bg-white text-emerald-600 rounded-lg shadow-sm transition-all duration-300 border border-slate-200 active:scale-95";
+                btnTakeAway.className = "w-10 h-9 md:w-12 md:h-10 flex flex-col items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg transition-all duration-300 border border-transparent active:scale-95";
+                if(!skipModal) openTableModal();
+            } else {
+                btnTakeAway.className = "w-10 h-9 md:w-12 md:h-10 flex flex-col items-center justify-center bg-white text-emerald-600 rounded-lg shadow-sm transition-all duration-300 border border-slate-200 active:scale-95";
+                btnDineIn.className = "w-10 h-9 md:w-12 md:h-10 flex flex-col items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg transition-all duration-300 border border-transparent active:scale-95";
+                selectedTable = null;
+                document.getElementById('table-indicator').innerText = "Meja -";
+            }
+        }
+
+        function openTableModal() {
+            renderTables();
+            const modal = document.getElementById('table-modal');
+            const content = document.getElementById('table-modal-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95'); content.classList.add('scale-100');
+            });
+        }
+
+        function closeTableModal() {
+            const modal = document.getElementById('table-modal');
+            const content = document.getElementById('table-modal-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 500);
+            
+            if(!selectedTable && orderType === 'Dine In') {
+                document.getElementById('table-indicator').innerText = "Meja ?";
+            }
+        }
+
+        function renderTables() {
+             const container = document.getElementById('table-grid-container');
+             if(!container) return;
+             let html = '';
+             for(let i=1; i<=16; i++) {
+                 const isOccupied = activeOrders.some(o => o.orderType === 'Dine In' && o.table === i);
+                 const isSelected = selectedTable === i;
+                 let btnClass = "bg-white text-slate-700 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 shadow-sm"; 
+                 
+                 if(isOccupied) btnClass = "bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200 shadow-sm";
+                 if(isSelected) btnClass = "bg-gradient-to-r from-teal-600 to-emerald-500 text-white border-transparent shadow-md transform scale-105"; 
+                 
+                 const clickAction = isOccupied ? `resumeOrderFromTable(${i})` : `selectTable(${i})`;
+
+                 html += `<button onclick="${clickAction}" class="py-2.5 rounded-xl border font-bold text-sm transition-all duration-300 active:scale-95 relative ${btnClass}">
+                            ${i}
+                            ${isOccupied ? `<span class="absolute top-0.5 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>` : ''}
+                         </button>`;
+             }
+             container.innerHTML = html;
+        }
+
+        function selectTable(num) {
+            selectedTable = num;
+            if(num === 'Tanpa Meja') document.getElementById('table-indicator').innerText = `Meja -`;
+            else document.getElementById('table-indicator').innerText = `Meja ${num}`;
+            closeTableModal();
+        }
+
+        function resumeOrderFromTable(tableNum) {
+            const order = activeOrders.find(o => o.orderType === 'Dine In' && o.table === tableNum);
+            if (order) {
+                closeTableModal();
+                setTimeout(() => resumeOrder(order.id), 300);
+            }
+        }
+
+        function addToCart(product) {
+            const existingItem = cart.find(item => item.product.id === product.id);
+            if (existingItem) existingItem.qty += 1;
+            else cart.push({ product: product, qty: 1 });
+            renderCart();
+            
+            setTimeout(() => {
+                const targetRow = document.getElementById(`cart-row-${product.id}`);
+                if (targetRow) targetRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 50);
+            
+            if(window.innerWidth < 1024 && !isSplitView) {
+               const btn = document.getElementById('mobile-cart-btn');
+               btn.classList.add('scale-[1.03]');
+               setTimeout(() => btn.classList.remove('scale-[1.03]'), 250);
+            }
+        }
+
+        function updateQty(productId, delta) {
+            const itemIndex = cart.findIndex(item => item.product.id === productId);
+            if(itemIndex > -1) {
+                cart[itemIndex].qty += delta;
+                if(cart[itemIndex].qty <= 0) cart.splice(itemIndex, 1);
+            }
+            renderCart();
+        }
+
+        function confirmClearCart() {
+            if(cart.length === 0) return;
+            customConfirm("Kosongkan Pesanan", "Seluruh menu di keranjang akan dihapus. Lanjutkan?", () => {
+                cart = [];
+                renderCart();
+                showToast("Pesanan direset", "info");
+            });
+        }
+
+        function calculateTotals(targetCart = cart) {
+            const subtotal = targetCart.reduce((sum, item) => sum + (item.product.harga * item.qty), 0);
+            const tax = subtotal * taxRate;
+            return { subtotal, tax, total: subtotal + tax };
+        }
+
+        function renderCart() {
+            const cartList = document.getElementById('cart-list');
+            const emptyMsg = document.getElementById('empty-cart-msg');
+            const checkoutBtn = document.getElementById('checkout-btn');
+            const saveBtn = document.getElementById('save-order-btn');
+            const mobileBtn = document.getElementById('mobile-cart-btn');
+            
+            const cartContainer = document.getElementById('cart-items');
+            const previousScroll = cartContainer.scrollTop;
+            
+            cartList.innerHTML = '';
+            
+            if (cart.length === 0) {
+                emptyMsg.classList.remove('hidden');
+                checkoutBtn.disabled = true; checkoutBtn.classList.add('opacity-50');
+                if(saveBtn) { saveBtn.disabled = true; saveBtn.classList.add('opacity-50'); }
+                
+                mobileBtn.classList.remove('translate-y-0');
+                mobileBtn.classList.add('translate-y-[150%]');
+            } else {
+                emptyMsg.classList.add('hidden');
+                checkoutBtn.disabled = false; checkoutBtn.classList.remove('opacity-50');
+                if(saveBtn) { saveBtn.disabled = false; saveBtn.classList.remove('opacity-50'); }
+                
+                let totalItems = 0;
+                cart.forEach(item => {
+                    totalItems += item.qty;
+                    const row = document.createElement('div');
+                    row.id = `cart-row-${item.product.id}`;
+                    row.className = "flex justify-between items-center bg-white p-2 rounded-lg border border-slate-100 shadow-sm";
+                    row.innerHTML = `
+                        <div class="flex-1 min-w-0 pr-1.5">
+                            <h4 class="font-bold text-slate-800 text-[10px] md:text-xs truncate mb-0.5">${item.product.nama}</h4>
+                            <div class="text-[9px] md:text-[10px] font-semibold text-slate-400">${formatRupiah(item.product.harga)}</div>
+                            <div class="font-extrabold text-slate-900 text-[11px] md:text-xs mt-0.5">${formatRupiah(item.product.harga * item.qty)}</div>
+                        </div>
+                        <div class="flex items-center gap-1 bg-slate-50 p-1 rounded-md border border-slate-100 shrink-0">
+                            <button onclick="updateQty('${item.product.id}', -1)" class="w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded bg-white text-slate-500 border border-slate-200 shadow-sm hover:text-slate-900 active:scale-90"><i class="fa-solid fa-minus text-[8px]"></i></button>
+                            <span class="w-4 md:w-5 text-center font-bold text-slate-900 text-[10px] md:text-xs">${item.qty}</span>
+                            <button onclick="updateQty('${item.product.id}', 1)" class="w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded bg-gradient-to-r from-teal-600 to-emerald-500 text-white shadow-sm active:scale-90"><i class="fa-solid fa-plus text-[8px]"></i></button>
+                        </div>
+                    `;
+                    cartList.appendChild(row);
+                });
+                
+                document.getElementById('mobile-cart-badge').innerText = totalItems;
+                mobileBtn.classList.remove('translate-y-[150%]');
+                mobileBtn.classList.add('translate-y-0');
+            }
+
+            const { subtotal, tax, total } = calculateTotals(cart);
+            document.getElementById('subtotal-display').innerText = formatRupiah(subtotal);
+            document.getElementById('tax-display').innerText = formatRupiah(tax);
+            document.getElementById('total-display').innerText = formatRupiah(total);
+            document.getElementById('mobile-cart-total').innerText = formatRupiah(total);
+            
+            cartContainer.scrollTop = previousScroll;
+        }
+
+        function toggleCart() {
+            if(isSplitView && window.innerWidth >= 0) return; 
+            
+            const sidebar = document.getElementById('cart-sidebar');
+            const overlay = document.getElementById('cart-overlay');
+            if (sidebar.classList.contains('translate-x-full')) {
+                overlay.classList.remove('hidden');
+                requestAnimationFrame(() => { overlay.classList.add('opacity-100'); sidebar.classList.remove('translate-x-full'); });
+            } else {
+                overlay.classList.remove('opacity-100'); sidebar.classList.add('translate-x-full');
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+            }
+        }
+
+        async function saveCurrentOrder() {
+            if (cart.length === 0) return;
+            
+            if (orderType === 'Dine In' && (!selectedTable || selectedTable === 'Tanpa Meja')) {
+                showToast("Pilih nomor meja terlebih dahulu!", "error");
+                openTableModal();
+                return;
+            }
+            
+            const orderId = 'HLD-' + Date.now();
+            const { total } = calculateTotals(cart);
+            const timestamp = new Date().toISOString();
+            
+            const newOrder = { id: orderId, orderType: orderType, table: selectedTable, cart: JSON.parse(JSON.stringify(cart)), total: total, timestamp: timestamp };
+
+            if (appConfig.scriptUrl) {
+                try {
+                    await sendToGas({ action: 'saveHoldBill', api_key: APP_API_KEY, id: orderId, order_type: orderType, table_num: selectedTable || '', total: total, timestamp: timestamp, cart: JSON.stringify(cart) });
+                    activeOrders.push(newOrder);
+                    showToast(`Pesanan disimpan ke Cloud.`, 'success');
+                } catch(e) {
+                    showToast("Gagal menyimpan pesanan ke server", "error");
+                    return;
+                }
+            } else {
+                showToast("URL Database belum diatur.", "error"); return;
+            }
+            
+            cart = [];
+            selectedTable = null;
+            setOrderType('Dine In', true); 
+            document.getElementById('table-indicator').innerText = "Meja ?";
+            renderCart();
+            updateActiveOrdersBadge();
+        }
+
+        function updateActiveOrdersBadge() {
+            const badge = document.getElementById('active-orders-badge');
+            if (activeOrders.length > 0) {
+                badge.innerText = activeOrders.length;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function filterSavedOrders(filter) {
+            const activeClass = "flex-1 py-2 text-[11px] font-bold rounded-lg bg-white text-slate-800 shadow-sm border border-slate-200/50 transition-all duration-300";
+            const inactiveClass = "flex-1 py-2 text-[11px] font-bold rounded-lg text-slate-500 hover:text-slate-700 transition-all duration-300";
+            
+            document.getElementById('tab-saved-all').className = filter === 'all' ? activeClass : inactiveClass;
+            document.getElementById('tab-saved-dinein').className = filter === 'dinein' ? activeClass : inactiveClass;
+            document.getElementById('tab-saved-takeaway').className = filter === 'takeaway' ? activeClass : inactiveClass;
+
+            const sectionDinein = document.getElementById('section-saved-dinein');
+            const sectionTakeaway = document.getElementById('section-saved-takeaway');
+
+            if (filter === 'all') {
+                sectionDinein.style.display = 'block'; sectionTakeaway.style.display = 'block';
+            } else if (filter === 'dinein') {
+                sectionDinein.style.display = 'block'; sectionTakeaway.style.display = 'none';
+            } else if (filter === 'takeaway') {
+                sectionDinein.style.display = 'none'; sectionTakeaway.style.display = 'block';
+            }
+        }
+
+        function renderActiveOrders() {
+            const tableGridContainer = document.getElementById('active-tables-grid');
+            const takeawayListContainer = document.getElementById('active-takeaway-list');
+            
+            let tableHtml = '';
+            for(let i = 1; i <= 16; i++) {
+                const orderInTable = activeOrders.find(o => o.orderType === 'Dine In' && o.table === i);
+                if (orderInTable) {
+                    const timeStr = new Date(orderInTable.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                    
+                    const isSelfOrder = orderInTable.id.startsWith('SLF-');
+                    const bgClass = isSelfOrder ? "bg-teal-50 border-teal-400" : "bg-amber-50 border-amber-300";
+                    const textClass = isSelfOrder ? "text-teal-700" : "text-amber-700";
+                    const tagHtml = isSelfOrder ? `<span class="absolute top-1 left-1 text-[7px] font-bold text-white bg-teal-500 px-1 rounded shadow-sm">NEW</span>` : '';
+
+                    tableHtml += `
+                        <div onclick="resumeOrder('${orderInTable.id}')" class="relative ${bgClass} border-2 rounded-xl p-2 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex flex-col items-center justify-center min-h-[70px] group">
+                            ${tagHtml}
+                            <span class="absolute top-1 right-1 text-[8px] font-bold ${textClass} bg-white/50 px-1 rounded">${timeStr}</span>
+                            <span class="font-extrabold ${textClass} text-lg leading-none mt-1">${i}</span>
+                            <span class="text-[9px] font-bold ${textClass} mt-1 opacity-80">${formatRupiah(orderInTable.total)}</span>
+                            <button onclick="event.stopPropagation(); deleteActiveOrder('${orderInTable.id}')" class="absolute -top-2 -right-2 w-5 h-5 bg-white border border-red-200 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-50 shadow-sm">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    tableHtml += `<div class="bg-white border border-slate-200 rounded-xl p-2 opacity-50 flex flex-col items-center justify-center min-h-[70px]"><span class="font-bold text-slate-400 text-sm">${i}</span></div>`;
+                }
+            }
+            tableGridContainer.innerHTML = tableHtml;
+
+            let takeawayHtml = '';
+            const takeawayOrders = activeOrders.filter(o => o.orderType !== 'Dine In' || !o.table || o.table === 'Tanpa Meja');
+            if(takeawayOrders.length === 0) {
+                takeawayHtml = `<div class="text-center py-4 text-[11px] font-bold text-slate-400">Tidak ada pesanan Take Away</div>`;
+            } else {
+                [...takeawayOrders].reverse().forEach(order => {
+                    const timeStr = new Date(order.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                    const itemNames = order.cart.map(c => `${c.qty}x ${c.product.nama}`).join(', ');
+                    const isSelfOrder = order.id.startsWith('SLF-');
+
+                    takeawayHtml += `
+                        <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:border-teal-300 transition-all duration-300 flex justify-between items-center group relative">
+                            ${isSelfOrder ? '<div class="absolute top-0 left-0 w-1 h-full bg-teal-500 rounded-l-xl"></div>' : ''}
+                            <div class="flex-1 min-w-0 pr-2 pl-2">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded text-[9px] font-bold">
+                                        <i class="fa-solid fa-bag-shopping mr-1"></i>Take Away
+                                        ${isSelfOrder ? '<span class="text-teal-600 ml-1">(Online)</span>' : ''}
+                                    </span>
+                                    <span class="text-[9px] text-slate-400 font-medium"><i class="regular fa-clock"></i> ${timeStr}</span>
+                                </div>
+                                <p class="text-[10px] text-slate-600 truncate">${itemNames}</p>
+                                <span class="font-extrabold text-slate-800 text-xs mt-1 block">${formatRupiah(order.total)}</span>
+                            </div>
+                            <div class="flex flex-col gap-1.5 shrink-0">
+                                <button onclick="resumeOrder('${order.id}')" class="bg-teal-50 hover:bg-teal-100 text-teal-700 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95 shadow-sm border border-teal-100">Buka</button>
+                                <button onclick="deleteActiveOrder('${order.id}')" class="text-slate-400 hover:text-red-500 text-[10px] font-bold px-2 py-1 transition-colors">Hapus</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            takeawayListContainer.innerHTML = takeawayHtml;
+        }
+
+        async function resumeOrder(id) {
+            if(cart.length > 0) {
+                showToast("Kosongkan pesanan saat ini terlebih dahulu!", "error"); return;
+            }
+            
+            const index = activeOrders.findIndex(o => o.id === id);
+            if(index > -1) {
+                const order = activeOrders[index];
+                
+                if (appConfig.scriptUrl) {
+                    try {
+                        await sendToGas({ action: 'deleteHoldBill', api_key: APP_API_KEY, id: id });
+                    } catch(e) {
+                        showToast("Gagal sync ke server", "error"); return;
+                    }
+                }
+
+                cart = order.cart;
+                if(order.orderType === 'Dine In') {
+                    setOrderType('Dine In', true);
+                    selectedTable = order.table;
+                    document.getElementById('table-indicator').innerText = selectedTable && selectedTable !== 'Tanpa Meja' ? `Meja ${selectedTable}` : "Meja -";
+                } else {
+                    setOrderType('Take Away', true);
+                }
+                
+                activeOrders.splice(index, 1);
+                closeActiveOrdersModal();
+                renderCart();
+                updateActiveOrdersBadge();
+                showToast("Pesanan dimuat kembali", "info");
+            }
+        }
+
+        function deleteActiveOrder(id) {
+            customConfirm("Hapus Pesanan", "Catatan pesanan ini akan dihapus permanen dari Cloud.", async () => {
+                const index = activeOrders.findIndex(o => o.id === id);
+                if(index > -1) {
+                    if (appConfig.scriptUrl) {
+                        try {
+                            await sendToGas({ action: 'deleteHoldBill', api_key: APP_API_KEY, id: id });
+                            activeOrders.splice(index, 1);
+                            renderActiveOrders();
+                            updateActiveOrdersBadge();
+                            showToast("Pesanan dihapus.", "success");
+                        } catch(e) {
+                            showToast("Gagal menghapus dari server", "error");
+                        }
+                    }
+                }
+            });
+        }
+
+        function openActiveOrdersModal() {
+            filterSavedOrders('all');
+            renderActiveOrders();
+            const modal = document.getElementById('active-orders-modal');
+            const content = document.getElementById('active-orders-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95'); content.classList.add('scale-100');
+            });
+        }
+
+        function closeActiveOrdersModal() {
+            const modal = document.getElementById('active-orders-modal');
+            const content = document.getElementById('active-orders-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 500);
+        }
+
+        function selectPaymentMethod(method) {
+            currentPaymentMethod = method;
+            
+            const activeClass = "flex-1 py-2 text-[11px] font-bold rounded-lg bg-white text-slate-800 shadow-sm border border-slate-200/50 transition-all duration-300";
+            const inactiveClass = "flex-1 py-2 text-[11px] font-bold rounded-lg text-slate-500 hover:text-slate-700 transition-all duration-300";
+            
+            document.getElementById('tab-tunai').className = method === 'Tunai' ? activeClass : inactiveClass;
+            document.getElementById('tab-qris').className = method === 'QRIS' ? activeClass : inactiveClass;
+            document.getElementById('tab-transfer').className = method === 'Transfer' ? activeClass : inactiveClass;
+
+            document.getElementById('cash-section').style.display = method === 'Tunai' ? 'block' : 'none';
+            document.getElementById('qris-section').style.display = method === 'QRIS' ? 'block' : 'none';
+            document.getElementById('transfer-section').style.display = method === 'Transfer' ? 'block' : 'none';
+
+            const processBtn = document.getElementById('process-payment-btn');
+            if (method === 'Tunai') calculateChange(); 
+            else if (currentTotalToPay > 0) processBtn.disabled = false; 
+        }
+
+        function setPaymentMode(mode) {
+            isSplitPaymentMode = (mode === 'split');
+            
+            const activeClass = "flex-1 py-1.5 text-[11px] font-bold rounded-lg bg-white text-slate-800 shadow-sm border border-slate-200/50 transition-all duration-300";
+            const inactiveClass = "flex-1 py-1.5 text-[11px] font-bold rounded-lg text-slate-500 hover:text-slate-700 transition-all duration-300";
+            
+            document.getElementById('tab-pay-full').className = !isSplitPaymentMode ? activeClass : inactiveClass;
+            document.getElementById('tab-pay-split').className = isSplitPaymentMode ? activeClass : inactiveClass;
+            
+            document.getElementById('split-info-banner').style.display = isSplitPaymentMode ? 'flex' : 'none';
+
+            splitCartSelections = {};
+            cart.forEach(item => {
+                splitCartSelections[item.product.id] = isSplitPaymentMode ? 0 : item.qty;
+            });
+            
+            renderPaymentSplitItems();
+            calculateChange();
+        }
+
+        function openPaymentModal() {
+            if (cart.length === 0) return;
+            if(window.innerWidth < 1024 && !isSplitView) toggleCart(); 
+
+            document.getElementById('cash-input').value = '';
+            document.getElementById('change-display').innerText = 'Rp 0';
+            document.getElementById('change-display').className = "text-lg font-extrabold text-slate-400";
+            
+            setPaymentMode('full'); 
+            selectPaymentMethod('Tunai');
+            document.getElementById('process-payment-btn').disabled = true;
+
+            const modal = document.getElementById('payment-modal');
+            const content = document.getElementById('payment-modal-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                if(window.innerWidth < 768) content.classList.remove('translate-y-full');
+                else { content.classList.remove('scale-95'); content.classList.add('scale-100'); }
+            });
+            setTimeout(() => document.getElementById('cash-input').focus(), 500);
+        }
+
+        function closePaymentModal() {
+            const modal = document.getElementById('payment-modal');
+            const content = document.getElementById('payment-modal-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            if(window.innerWidth < 768) content.classList.add('translate-y-full');
+            else { content.classList.remove('scale-100'); content.classList.add('scale-95'); }
+            setTimeout(() => modal.classList.add('hidden'), 500);
+        }
+
+        function updatePaymentSplitQty(productId, maxQty, delta) {
+            if(!isSplitPaymentMode) return; 
+            
+            let current = splitCartSelections[productId] !== undefined ? splitCartSelections[productId] : 0;
+            current += delta;
+            if (current < 0) current = 0;
+            if (current > maxQty) current = maxQty;
+            splitCartSelections[productId] = current;
+            renderPaymentSplitItems();
+            calculateChange();
+        }
+
+        function renderPaymentSplitItems() {
+            const container = document.getElementById('payment-split-items');
+            container.innerHTML = '';
+            
+            let tempCartToPay = [];
+            cart.forEach(item => {
+                const max = item.qty;
+                const currentSplit = splitCartSelections[item.product.id] !== undefined ? splitCartSelections[item.product.id] : (isSplitPaymentMode ? 0 : max);
+                
+                if (currentSplit > 0) tempCartToPay.push({ product: item.product, qty: currentSplit });
+
+                const row = document.createElement('div');
+                if(isSplitPaymentMode) {
+                    row.className = `flex justify-between items-center p-2 rounded-xl border shadow-sm transition-all duration-300 ${currentSplit > 0 ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'}`;
+                    row.innerHTML = `
+                        <div class="flex-1 min-w-0 pr-2">
+                            <h4 class="font-bold text-slate-800 text-[10px] md:text-xs truncate mb-0.5">${item.product.nama}</h4>
+                            <div class="text-[9px] text-slate-500">${formatRupiah(item.product.harga)} <span class="text-slate-400 font-bold ml-1">(Pesan: ${max})</span></div>
+                        </div>
+                        <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0">
+                            <button onclick="updatePaymentSplitQty('${item.product.id}', ${max}, -1)" class="w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded bg-white text-slate-500 shadow-sm hover:text-slate-900 active:scale-90"><i class="fa-solid fa-minus text-[10px]"></i></button>
+                            <span class="w-4 md:w-5 text-center font-extrabold text-slate-800 text-xs">${currentSplit}</span>
+                            <button onclick="updatePaymentSplitQty('${item.product.id}', ${max}, 1)" class="w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded bg-white text-slate-500 shadow-sm hover:text-slate-900 active:scale-90"><i class="fa-solid fa-plus text-[10px]"></i></button>
+                        </div>
+                    `;
+                } else {
+                    row.className = `flex justify-between items-center p-2 rounded-xl border bg-white border-slate-200 shadow-sm`;
+                    row.innerHTML = `
+                        <div class="flex-1 min-w-0 pr-2">
+                            <h4 class="font-bold text-slate-800 text-[10px] md:text-xs truncate mb-0.5">${item.product.nama}</h4>
+                            <div class="text-[9px] text-slate-500">${formatRupiah(item.product.harga)} x ${max}</div>
+                        </div>
+                        <div class="font-extrabold text-slate-800 text-xs shrink-0">${formatRupiah(item.product.harga * max)}</div>
+                    `;
+                }
+                container.appendChild(row);
+            });
+            
+            const { total } = calculateTotals(tempCartToPay);
+            currentTotalToPay = total;
+            document.getElementById('payment-total-display').innerText = formatRupiah(total);
+            
+            const processBtn = document.getElementById('process-payment-btn');
+            if (total === 0) processBtn.disabled = true;
+            else if (currentPaymentMethod !== 'Tunai') processBtn.disabled = false;
+        }
+
+        function formatInputCurrency(el) {
+            let val = el.value.replace(/[^0-9]/g, '');
+            if(val !== "") {
+                val = parseInt(val, 10).toString(); 
+                el.value = val.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            } else {
+                el.value = "";
+            }
+            calculateChange();
+        }
+
+        function setCash(amount) {
+            let val = (amount === 'exact') ? Math.ceil(currentTotalToPay) : amount;
+            document.getElementById('cash-input').value = val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            calculateChange();
+        }
+
+        function calculateChange() {
+            let rawVal = document.getElementById('cash-input').value.replace(/\./g, '');
+            const cashVal = parseInt(rawVal) || 0;
+            const changeDisplay = document.getElementById('change-display');
+            const processBtn = document.getElementById('process-payment-btn');
+            const change = cashVal - currentTotalToPay;
+            
+            if (currentTotalToPay === 0) {
+                processBtn.disabled = true; return;
+            }
+
+            if (change >= 0) {
+                changeDisplay.innerText = formatRupiah(change);
+                changeDisplay.className = "text-xl font-extrabold text-emerald-600 tracking-tight";
+                processBtn.disabled = false;
+            } else {
+                changeDisplay.innerText = "Kurang";
+                changeDisplay.className = "text-base font-bold text-red-500 tracking-tight";
+                processBtn.disabled = true;
+            }
+        }
+
+        function generateTransactionId() {
+            const now = new Date();
+            return `TRX${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${Date.now().toString().slice(-4)}`;
+        }
+
+        async function processTransaction() {
+            let cartToPay = [];
+            let cartRemaining = [];
+            let hasRemaining = false;
+
+            cart.forEach(item => {
+                const splitQty = splitCartSelections[item.product.id] !== undefined ? splitCartSelections[item.product.id] : item.qty;
+                const remQty = item.qty - splitQty;
+                if (splitQty > 0) cartToPay.push({ product: item.product, qty: splitQty });
+                if (remQty > 0) {
+                    cartRemaining.push({ product: item.product, qty: remQty });
+                    hasRemaining = true;
+                }
+            });
+
+            if (cartToPay.length === 0) { showToast("Pilih menu untuk dibayar.", "error"); return; }
+            if (hasRemaining && orderType === 'Dine In' && (!selectedTable || selectedTable === 'Tanpa Meja')) {
+                showToast("Pilih meja terlebih dahulu untuk sisa pesanan!", "error");
+                closePaymentModal(); openTableModal(); return;
+            }
+
+            const btnText = document.getElementById('process-text');
+            let rawVal = document.getElementById('cash-input').value.replace(/\./g, '');
+            let cash = parseInt(rawVal) || 0;
+            const { total, subtotal, tax } = calculateTotals(cartToPay);
+
+            if (currentPaymentMethod !== 'Tunai') cash = total;
+            const change = cash - total;
+
+            document.getElementById('process-payment-btn').disabled = true;
+            btnText.innerHTML = '<div class="loader loader-white mr-2 inline-block align-middle"></div> Memproses...';
+
+            const newTrxId = generateTransactionId();
+            let orderNote = orderType === 'Dine In' && selectedTable && selectedTable !== 'Tanpa Meja' ? `${orderType} (Meja ${selectedTable})` : orderType;
+            if(hasRemaining) orderNote += ' (Split)';
+            orderNote += ` - ${currentPaymentMethod}`;
+            
+            const trxRawItems = JSON.stringify(cartToPay.map(c => ({ id: c.product.id, nama: c.product.nama, qty: c.qty, harga: c.product.harga })));
+
+            if (appConfig.scriptUrl) {
+                try {
+                    await sendToGas({
+                        action: 'saveTransaction', api_key: APP_API_KEY, id_transaksi: newTrxId,
+                        tanggal: new Date().toISOString(), total_belanja: total, uang_dibayar: cash, kembalian: change,
+                        tipe_pesanan: orderNote, items: trxRawItems
+                    });
+                    
+                    if (hasRemaining) {
+                        const holdId = 'HLD-' + Date.now();
+                        const { total: remTotal } = calculateTotals(cartRemaining);
+                        await sendToGas({ action: 'saveHoldBill', api_key: APP_API_KEY, id: holdId, order_type: orderType, table_num: selectedTable || '', total: remTotal, timestamp: new Date().toISOString(), cart: JSON.stringify(cartRemaining) });
+                    }
+                    
+                    await fetchInitialData();
+                    successTransactionCheckout(cash, change, subtotal, tax, total, newTrxId, orderNote);
+                } catch(e) {
+                    console.error('GAS Save Error', e);
+                    showToast("Gagal mengirim data ke Server Cloud.", "error");
+                    btnText.innerHTML = 'Selesaikan Transaksi';
+                    document.getElementById('process-payment-btn').disabled = false;
+                }
+            } else {
+                showToast("URL Database belum diatur.", "error");
+                btnText.innerHTML = 'Selesaikan Transaksi';
+            }
+        }
+
+        function successTransactionCheckout(cash, changeAmount, subtotal, tax, total, trxId, orderNote) {
+            printReceipt(cash, changeAmount, subtotal, tax, total, trxId);
+            closePaymentModal();
+            
+            if(currentPaymentMethod === 'Tunai') showToast(`Selesai. Kembali: ${formatRupiah(changeAmount)}`, "success");
+            else showToast(`Transaksi ${currentPaymentMethod} Berhasil!`, "success");
+            
+            cart = [];
+            renderCart();
+            selectedTable = null; 
+            setOrderType('Dine In', true); 
+            document.getElementById('table-indicator').innerText = "Meja ?";
+            
+            setTimeout(() => { document.getElementById('process-text').innerHTML = 'Selesaikan Transaksi'; }, 600);
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            
+            if (transactionHistory.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-10 opacity-50">
+                        <i class="fa-solid fa-receipt text-3xl mb-3 text-slate-400"></i>
+                        <p class="text-xs font-bold text-slate-500">Belum ada histori transaksi dari Cloud.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = transactionHistory.map(trx => {
+                const dateObj = new Date(trx.date);
+                const timeStr = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                const dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+                
+                let itemSummary = '';
+                try {
+                    const parsedItems = JSON.parse(trx.itemsRaw);
+                    itemSummary = parsedItems.map(i => `${i.qty}x ${i.nama}`).join(', ');
+                } catch(e) { itemSummary = 'Detail item tidak terbaca'; }
+                
+                let iconHtml = '<i class="fa-solid fa-money-bill-wave"></i>';
+                let iconColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+                if (trx.paymentMethod === 'QRIS') {
+                    iconHtml = '<i class="fa-solid fa-qrcode"></i>';
+                    iconColor = 'bg-blue-50 text-blue-600 border-blue-100';
+                } else if (trx.paymentMethod === 'Transfer') {
+                    iconHtml = '<i class="fa-solid fa-building-columns"></i>';
+                    iconColor = 'bg-indigo-50 text-indigo-600 border-indigo-100';
+                }
+
+                return `
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border ${iconColor}">
+                            ${iconHtml}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-wider">${trx.id}</span>
+                                <span class="text-[9px] text-slate-400 font-medium">${dateStr}, ${timeStr}</span>
+                            </div>
+                            <h4 class="font-extrabold text-xs text-slate-800 tracking-tight">${formatRupiah(trx.total)}</h4>
+                            <p class="text-[9px] text-slate-500 truncate mt-0.5">${itemSummary}</p>
+                            <p class="text-[8px] font-bold text-slate-400 mt-1">${trx.orderType}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openHistoryModal() {
+            renderHistory();
+            const modal = document.getElementById('history-modal');
+            const content = document.getElementById('history-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95'); content.classList.add('scale-100');
+            });
+        }
+
+        function closeHistoryModal() {
+            const modal = document.getElementById('history-modal');
+            const content = document.getElementById('history-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 500);
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('main-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                overlay.classList.remove('hidden');
+                requestAnimationFrame(() => { overlay.classList.add('opacity-100'); sidebar.classList.remove('-translate-x-full'); });
+            } else {
+                overlay.classList.remove('opacity-100'); sidebar.classList.add('-translate-x-full');
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+            }
+        }
+        
+        function openSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            const content = document.getElementById('settings-modal-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => { modal.classList.add('opacity-100'); modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); content.classList.add('scale-100'); });
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            const content = document.getElementById('settings-modal-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 500);
+        }
+
+        function saveSettings() {
+            const url = document.getElementById('script-url-input').value.trim();
+            localStorage.setItem('pos_script_url', url); 
+            appConfig.scriptUrl = url; 
+            closeSettingsModal();
+            showToast("URL Disimpan. Memulai Sync...", "success");
+            initializeApp();
+        }
+
+        function copyAppScriptCode() {
+            const codeTextarea = document.getElementById('app-script-code');
+            codeTextarea.select();
+            codeTextarea.setSelectionRange(0, 99999); 
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(codeTextarea.value).then(() => showToast("Kode disalin!", "success"));
+                } else {
+                    document.execCommand('copy'); showToast("Kode disalin!", "success");
+                }
+            } catch (err) { showToast("Gagal menyalin.", "error"); }
+            window.getSelection().removeAllRanges(); 
+        }
+
+        function applySplitView() {
+            const btn = document.getElementById('split-view-btn');
+            if(isSplitView) {
+                document.body.classList.add('force-split-view');
+                if(btn) btn.className = "w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 transition-colors duration-300 border border-emerald-200 active:scale-95";
+                document.getElementById('cart-sidebar').classList.remove('translate-x-full'); 
+            } else {
+                document.body.classList.remove('force-split-view');
+                if(btn) btn.className = "w-8 h-8 flex items-center justify-center rounded-lg bg-white hover:bg-slate-100 text-slate-600 transition-colors duration-300 border border-slate-200 active:scale-95";
+                if(window.innerWidth < 1024) document.getElementById('cart-sidebar').classList.add('translate-x-full');
+            }
+            renderCart();
+        }
+
+        function toggleSplitView() {
+            isSplitView = !isSplitView;
+            localStorage.setItem('pos_split_view', isSplitView);
+            applySplitView();
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    showToast(`Gagal memuat layar penuh: ${err.message}`, "error");
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            const icon = document.getElementById('fullscreen-icon');
+            if (icon) {
+                if (document.fullscreenElement) {
+                    icon.classList.replace('fa-expand', 'fa-compress');
+                } else {
+                    icon.classList.replace('fa-compress', 'fa-expand');
+                }
+            }
+        });
+
+        function openViewSettings() {
+            document.getElementById('grid-columns-range').value = gridCols;
+            updateGridColumnsDisplay(); updateViewTypeButtons();
+            
+            const modal = document.getElementById('view-settings-modal');
+            const content = document.getElementById('view-settings-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95'); content.classList.add('scale-100');
+            });
+        }
+
+        function closeViewSettings() {
+            const modal = document.getElementById('view-settings-modal');
+            const content = document.getElementById('view-settings-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 500);
+            
+            gridCols = parseInt(document.getElementById('grid-columns-range').value);
+            localStorage.setItem('pos_grid_cols', gridCols);
+            applyGridStyle();
+        }
+
+        function setViewType(type) {
+            viewType = type;
+            localStorage.setItem('pos_view_type', type);
+            updateViewTypeButtons(); applyGridStyle();
+        }
+
+        function updateViewTypeButtons() {
+            const btnGrid = document.getElementById('btn-view-grid');
+            const btnList = document.getElementById('btn-view-list');
+            const gridSettings = document.getElementById('grid-columns-settings');
+            
+            const activeClass = "border-emerald-500 bg-emerald-50 text-emerald-700";
+            const inactiveClass = "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700";
+            
+            if(viewType === 'grid') {
+                btnGrid.className = `py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs ${activeClass}`;
+                btnList.className = `py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs ${inactiveClass}`;
+                gridSettings.style.display = 'block';
+            } else {
+                btnList.className = `py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs ${activeClass}`;
+                btnGrid.className = `py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs ${inactiveClass}`;
+                gridSettings.style.display = 'none';
+            }
+        }
+
+        function updateGridColumnsDisplay() {
+            document.getElementById('grid-columns-val').innerText = document.getElementById('grid-columns-range').value;
+        }
+
+        function applyGridStyle() {
+            const grid = document.getElementById('products-grid');
+            grid.className = 'w-full transition-all duration-300 ease-in-out';
+            grid.style.removeProperty('grid-template-columns');
+            
+            if (viewType === 'list') {
+                grid.classList.add('list-view');
+            } else {
+                grid.classList.add('grid', 'gap-2', 'md:gap-3');
+                grid.style.setProperty('grid-template-columns', `repeat(${gridCols}, minmax(0, 1fr))`, 'important');
+            }
+        }
+
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            document.getElementById('toast-message').innerText = msg;
+            
+            toast.className = 'fixed bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 text-white px-3 md:px-4 py-2 md:py-2.5 rounded-xl flex items-center gap-2 z-[100000] transition-all duration-500 ease-premium transform border w-[90%] md:w-auto max-w-[300px]';
+            
+            if(type === 'success') { toast.classList.add('bg-emerald-600', 'shadow-btn'); icon.className = 'fa-solid fa-circle-check text-white shrink-0'; }
+            else if (type === 'error') { toast.classList.add('bg-red-500', 'shadow-md'); icon.className = 'fa-solid fa-circle-exclamation text-white shrink-0'; }
+            else { toast.classList.add('bg-slate-800', 'shadow-md'); icon.className = 'fa-solid fa-bell text-white shrink-0'; }
+
+            requestAnimationFrame(() => { toast.classList.remove('translate-y-20', 'opacity-0'); });
+            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+        }
+
+        function openQRModal() {
+            if(!appConfig.scriptUrl) {
+                showToast("Atur URL Database Cloud terlebih dahulu sebelum menggunakan QR Code.", "error");
+                return;
+            }
+            renderQRTableOptions(); generateQRCode(); 
+            const modal = document.getElementById('qr-modal');
+            const content = document.getElementById('qr-modal-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95'); content.classList.add('scale-100');
+            });
+        }
+        
+        function closeQRModal() {
+            const modal = document.getElementById('qr-modal');
+            const content = document.getElementById('qr-modal-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 500);
+        }
+        
+        function renderQRTableOptions() {
+            const container = document.getElementById('qr-table-grid');
+            if (!container) return;
+            
+            let html = '';
+            for (let i = 1; i <= 16; i++) {
+                const isOccupied = activeOrders.some(o => o.orderType === 'Dine In' && o.table === i);
+                const isSelected = qrSelectedTable === i;
+                
+                let btnClass = "bg-white text-slate-700 border-slate-200 hover:border-teal-300 hover:bg-teal-50 shadow-sm"; 
+                if (isOccupied) btnClass = "bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200 shadow-sm";
+                if (isSelected) btnClass = "bg-gradient-to-r from-teal-600 to-emerald-500 text-white border-transparent shadow-md transform scale-105"; 
+                
+                html += `<button onclick="selectQRTable(${i})" class="py-1.5 rounded-lg border font-bold text-xs transition-all duration-300 active:scale-95 relative ${btnClass}">
+                            ${i}
+                            ${isOccupied ? `<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span>` : ''}
+                        </button>`;
+            }
+            container.innerHTML = html;
+
+            const btnGeneral = document.getElementById('btn-qr-general');
+            if (qrSelectedTable === 'general') {
+                btnGeneral.className = "w-full mt-1.5 py-1.5 rounded-lg border font-bold text-[11px] transition-all duration-300 bg-gradient-to-r from-teal-600 to-emerald-500 text-white border-transparent shadow-md";
+            } else {
+                btnGeneral.className = "w-full mt-1.5 py-1.5 rounded-lg border font-bold text-[11px] transition-all duration-300 bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-sm";
+            }
+        }
+
+        function selectQRTable(num) {
+            qrSelectedTable = num;
+            renderQRTableOptions();
+            generateQRCode();
+        }
+
+        function regenerateQR() {
+            const table = qrSelectedTable || 'general';
+            const newToken = Math.random().toString(36).substring(2, 10);
+            tableTokens[table] = newToken;
+            localStorage.setItem('pos_table_tokens', JSON.stringify(tableTokens));
+            
+            showToast("QR Code diperbarui! QR yang difoto pelanggan sebelumnya akan kadaluarsa.", "success");
+            generateQRCode();
+        }
+        
+        function generateQRCode() {
+            const table = qrSelectedTable || 'general';
+            
+            if(!tableTokens[table]) {
+                tableTokens[table] = Math.random().toString(36).substring(2, 10);
+                localStorage.setItem('pos_table_tokens', JSON.stringify(tableTokens));
+            }
+            const token = tableTokens[table];
+
+            const baseUrl = window.location.href.split('?')[0].split('#')[0]; 
+            const dbUrl = encodeURIComponent(appConfig.scriptUrl); 
+            const finalUrl = `${baseUrl}?mode=selforder&table=${table}&db=${dbUrl}&t=${token}`;
+            
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(finalUrl)}&margin=10`;
+            document.getElementById('qr-image').src = qrUrl;
+            document.getElementById('fullscreen-qr-img').src = qrUrl;
+            
+            if(table === 'general') { 
+                document.getElementById('fullscreen-qr-desc').innerText = "Arahkan kamera HP Anda ke kode ini untuk mulai memesan.";
+            } else { 
+                document.getElementById('fullscreen-qr-desc').innerText = `Scan kode ini untuk memesan langsung di Meja ${table}.`; 
+            }
+        }
+        
+        function fullscreenQR() {
+            closeQRModal();
+            const fullscreen = document.getElementById('fullscreen-qr');
+            fullscreen.classList.remove('hidden'); fullscreen.classList.add('flex');
+            requestAnimationFrame(() => { fullscreen.classList.add('opacity-100'); fullscreen.classList.remove('opacity-0'); });
+        }
+        
+        function closeFullscreenQR() {
+            const fullscreen = document.getElementById('fullscreen-qr');
+            fullscreen.classList.remove('opacity-100'); fullscreen.classList.add('opacity-0');
+            setTimeout(() => { fullscreen.classList.add('hidden'); fullscreen.classList.remove('flex'); }, 500);
+        }
+        
+        function printQRCode() {
+            const table = qrSelectedTable || 'general';
+            const qrSrc = document.getElementById('qr-image').src;
+            const title = table === 'general' ? 'SCAN & PESAN' : `MEJA ${table}`;
+            const subtitle = table === 'general' ? 'Pesan & Bayar dari HP' : 'Scan untuk memesan dari meja Anda';
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head><title>Cetak QR - ${title}</title><style>body { font-family: 'Arial', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #fff; }.ticket { text-align: center; border: 2px dashed #000; padding: 30px; border-radius: 16px; width: 280px; }h1 { margin: 0 0 5px 0; font-size: 24px; color: #000; text-transform: uppercase; }p { margin: 0 0 15px 0; font-size: 14px; color: #555; }img { width: 200px; height: 200px; margin-bottom: 15px; }.footer { font-size: 12px; font-weight: bold; background: #000; color: #fff; padding: 6px; border-radius: 6px;}</style></head>
+                <body><div class="ticket"><h1>${title}</h1><p>${subtitle}</p><img src="${qrSrc}" onload="setTimeout(() => { window.print(); window.close(); }, 500)"><div class="footer">SmartPOS Self-Order</div></div></body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        function printReceipt(cash, change, subtotal, tax, total, trxId) {
+            const dateStr = new Date().toLocaleString('id-ID');
+            let itemsHtml = '';
+            cart.forEach(item => {
+                itemsHtml += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span style="flex:1;">${item.product.nama} x${item.qty}</span><span>${formatRupiah(item.product.harga * item.qty)}</span></div>`;
+            });
+            const tableText = orderType === 'Dine In' && selectedTable && selectedTable !== 'Tanpa Meja' ? `<br>MEJA ${selectedTable}` : '';
+            
+            const kasirName = currentUser ? currentUser.nama : 'Admin Pusat';
+
+            const receiptHtml = `
+                <div style="width: 280px; padding: 15px; font-family: monospace; color: black; background: white; margin: 0 auto;">
+                    <h2 style="text-align: center; margin: 0 0 5px 0; font-size: 18px;">SMARTPOS</h2>
+                    <p style="text-align: center; margin: 0 0 5px 0; font-size: 11px;">ID: ${trxId}</p>
+                    <p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; border-bottom: 1px dashed black; padding-bottom: 10px;">${dateStr}<br>${kasirName}</p>
+                    <p style="text-align: center; font-weight: bold; font-size: 13px; margin: 0 0 15px 0; border-bottom: 1px dashed black; padding-bottom: 10px;">${orderType.toUpperCase()} ${tableText}</p>
+                    <div style="font-size: 11px; margin-bottom: 10px;">${itemsHtml}</div>
+                    <div style="border-top: 1px dashed black; padding-top: 10px; font-size: 11px;">
+                        <div style="display: flex; justify-content: space-between;"><span>Subtotal</span><span>${formatRupiah(subtotal)}</span></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Pajak 11%</span><span>${formatRupiah(tax)}</span></div>
+                        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; margin-top: 5px;"><span>TOTAL</span><span>${formatRupiah(total)}</span></div>
+                    </div>
+                    <div style="border-top: 1px dashed black; padding-top: 10px; margin-top: 10px; font-size: 11px;">
+                        <div style="display: flex; justify-content: space-between;"><span>Pembayaran</span><span style="font-weight:bold;">${currentPaymentMethod.toUpperCase()}</span></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Bayar</span><span>${formatRupiah(cash)}</span></div>
+                        ${currentPaymentMethod === 'Tunai' ? `<div style="display: flex; justify-content: space-between;"><span>Kembali</span><span>${formatRupiah(change)}</span></div>` : ''}
+                    </div>
+                    <p style="text-align: center; margin-top: 15px; font-size: 11px;">Terima Kasih!</p>
+                </div>
+            `;
+            const printArea = document.getElementById('print-receipt-area');
+            printArea.innerHTML = receiptHtml; printArea.classList.remove('hidden');
+            window.print();
+            setTimeout(() => { printArea.classList.add('hidden'); printArea.innerHTML = ''; }, 1000);
+        }
+
+        function updateCustomerStatusBadge() {
+            const badge = document.getElementById('customer-status-badge');
+            if(!badge) return;
+            const activeCount = mySelfOrders.filter(o => o.status === 'Menunggu').length;
+            if(activeCount > 0) {
+                badge.innerText = activeCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function openCustomerStatusModal() {
+            renderCustomerStatus();
+            const modal = document.getElementById('customer-status-modal');
+            const content = document.getElementById('customer-status-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95'); content.classList.add('scale-100');
+            });
+        }
+
+        function closeCustomerStatusModal() {
+            const modal = document.getElementById('customer-status-modal');
+            const content = document.getElementById('customer-status-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 500);
+        }
+
+        function renderCustomerStatus() {
+            const list = document.getElementById('customer-status-list');
+            if(mySelfOrders.length === 0) {
+                list.innerHTML = `<div class="text-center py-6 text-[11px] font-bold text-slate-400"><i class="fa-solid fa-receipt text-3xl mb-3 text-slate-300 block"></i>Belum ada riwayat pesanan.</div>`;
+                return;
+            }
+
+            list.innerHTML = mySelfOrders.map(order => {
+                const timeStr = new Date(order.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                
+                let statusBadge = '';
+                if(order.status === 'Menunggu') {
+                    statusBadge = `<span class="bg-amber-100 text-amber-700 border border-amber-200 px-2 py-1 rounded shadow-sm text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-clock animate-pulse"></i> Menunggu Kasir</span>`;
+                } else {
+                    statusBadge = `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded shadow-sm text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-check-circle"></i> Selesai / Diproses</span>`;
+                }
+
+                return `
+                    <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm relative overflow-hidden group hover:border-slate-300 transition-all">
+                        ${order.status === 'Menunggu' ? '<div class="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>' : '<div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>'}
+                        <div class="flex justify-between items-start mb-2 pl-2">
+                            <div>
+                                <p class="text-[9px] font-bold text-slate-400 mb-0.5">${order.id}</p>
+                                <p class="text-[10px] font-bold text-slate-800"><i class="regular fa-clock text-[9px]"></i> ${timeStr}</p>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                        <div class="pl-2 border-t border-slate-100 pt-2 mt-1">
+                            <p class="text-[10px] text-slate-600 line-clamp-2 leading-relaxed font-medium">${order.items}</p>
+                            <p class="text-xs font-black text-slate-900 mt-1.5">${formatRupiah(order.total)}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function clearMyOrdersHistory() {
+            customConfirm("Bersihkan Riwayat", "Riwayat pesanan yang tampil di perangkat ini akan dihapus. Lanjutkan?", () => {
+                mySelfOrders = [];
+                localStorage.setItem('pos_my_orders', JSON.stringify(mySelfOrders));
+                renderCustomerStatus();
+                updateCustomerStatusBadge();
+                showToast("Riwayat dibersihkan", "success");
+            });
+        }
+
+        function startCustomerPolling() {
+            if (!isSelfOrderMode || !appConfig.scriptUrl) return;
+            
+            customerPollingInterval = setInterval(async () => {
+                let pendingOrders = mySelfOrders.filter(o => o.status === 'Menunggu');
+                if (pendingOrders.length === 0) return;
+
+                try {
+                    const res = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}`);
+                    if(!res.ok) return;
+                    const data = await res.json();
+                    
+                    if(data.status === 'success') {
+                        let isUpdated = false;
+                        mySelfOrders.forEach(myOrder => {
+                            if(myOrder.status === 'Menunggu') {
+                                const stillExists = data.hold_bills.find(h => h.id === myOrder.id);
+                                if(!stillExists) {
+                                    myOrder.status = 'Selesai';
+                                    isUpdated = true;
+                                }
+                            }
+                        });
+                        
+                        if(isUpdated) {
+                            localStorage.setItem('pos_my_orders', JSON.stringify(mySelfOrders));
+                            updateCustomerStatusBadge();
+                            if(!document.getElementById('customer-status-modal').classList.contains('hidden')) {
+                                renderCustomerStatus();
+                            }
+                            showToast("Pembaruan: Pesanan Anda telah diproses kasir!", "success");
+                        }
+                    }
+                } catch(e) {
+                    console.warn("Customer polling failed", e);
+                }
+            }, 5000); // Polling sama-sama 5 detik agar responsif.
+        }
+
+        window.onload = initializeApp;
+    </script>
+</body>
+</html>
