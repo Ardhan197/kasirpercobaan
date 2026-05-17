@@ -195,7 +195,7 @@
 
         <div class="flex items-center gap-1.5 md:gap-3" id="admin-header-actions">
             <!-- Tombol Lonceng Antrean -->
-            <button id="new-order-alert-btn" onclick="openIncomingQueueModal()" class="hidden h-8 px-3 flex items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors duration-300 border border-red-600 active:scale-95 animate-pulse shadow-md shadow-red-500/30 gap-1.5 font-bold text-xs" title="Ada Pesanan Baru">
+            <button id="new-order-alert-btn" onclick="openIncomingQueueModal()" class="hidden h-8 px-3 flex items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors duration-300 border border-red-600 active:scale-95 animate-pulse shadow-md shadow-red-500/30 gap-1.5 font-bold text-xs" title="Buka Antrean Pesanan Baru">
                 <i class="fa-solid fa-bell animate-ring"></i> <span id="new-order-alert-text">Pesanan Baru</span>
             </button>
 
@@ -1400,7 +1400,8 @@ function doPost(e) {
             pollingInterval = setInterval(async () => {
                 if(!appConfig.scriptUrl) return;
                 try {
-                    const response = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}`);
+                    // PENTING: Tambahkan &_=${Date.now()} untuk MENCEGAH browser menggunakan file Cache lama.
+                    const response = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
                     if(!response.ok) return;
                     const data = await response.json();
                     
@@ -1418,18 +1419,22 @@ function doPost(e) {
                         const selfOrders = incomingOrders.filter(o => o.id.startsWith('SLF-'));
                         const newlyArrived = selfOrders.filter(o => !acknowledgedOrders.includes(o.id));
                         
+                        let newlyAddedToQueue = false;
                         if(newlyArrived.length > 0) {
-                            let newlyAddedToQueue = false;
                             newlyArrived.forEach(no => {
                                 if(!unconfirmedOrders.find(uo => uo.id === no.id)) {
                                     unconfirmedOrders.push(no);
                                     newlyAddedToQueue = true;
                                 }
                             });
-                            
-                            if (newlyAddedToQueue) {
-                                updateIncomingOrderAlert();
-                            }
+                        }
+
+                        // Selalu perbarui badge jika ada perubahan jumlah
+                        updateIncomingOrderAlert();
+                        
+                        // Jika modal list sedang terbuka dan ada data baru, render ulang
+                        if (newlyAddedToQueue && !document.getElementById('incoming-queue-modal').classList.contains('hidden')) {
+                            renderIncomingQueue();
                         }
 
                         const finalActiveOrders = incomingOrders.filter(o => !unconfirmedOrders.find(uo => uo.id === o.id));
@@ -1674,7 +1679,8 @@ function doPost(e) {
             }
 
             try {
-                const response = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}`);
+                // PENTING: Tambahkan &_=${Date.now()} untuk MENCEGAH browser menggunakan file Cache lama.
+                const response = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
                 if(!response.ok) throw new Error('Gagal menghubungkan ke server.');
                 
                 const data = await response.json();
@@ -2920,6 +2926,10 @@ function doPost(e) {
             const baseUrl = window.location.href.split('?')[0].split('#')[0]; 
             const dbUrl = encodeURIComponent(appConfig.scriptUrl); 
             const finalUrl = `${baseUrl}?mode=selforder&table=${table}&db=${dbUrl}&t=${token}`;
+
+            if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                showToast("PERINGATAN: Berjalan di lokal! QR Code tidak bisa di-scan dari HP pelanggan. Harap hosting web ini terlebih dahulu.", "error");
+            }
             
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(finalUrl)}&margin=10`;
             document.getElementById('qr-image').src = qrUrl;
@@ -3081,7 +3091,8 @@ function doPost(e) {
                 if (pendingOrders.length === 0) return;
 
                 try {
-                    const res = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}`);
+                    // PENTING: Tambahkan &_=${Date.now()} untuk pemecah cache di sisi pelanggan.
+                    const res = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
                     if(!res.ok) return;
                     const data = await res.json();
                     
@@ -3109,7 +3120,7 @@ function doPost(e) {
                 } catch(e) {
                     console.warn("Customer polling failed", e);
                 }
-            }, 5000); // Polling sama-sama 5 detik agar responsif.
+            }, 5000);
         }
 
         window.onload = initializeApp;
