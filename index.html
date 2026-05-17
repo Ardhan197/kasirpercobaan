@@ -491,16 +491,10 @@
             </div>
             
             <div class="p-4 flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar">
-                <p class="text-[10px] text-slate-500 text-center mb-4">Daftar pesanan yang Anda buat dari perangkat ini.</p>
+                <p class="text-[10px] text-slate-500 text-center mb-4">Daftar pesanan Anda. Tutup pop-up ini untuk memilih dan memesan tambahan menu.</p>
                 <div id="customer-status-list" class="flex flex-col gap-3">
                     <!-- Dimuat JS -->
                 </div>
-            </div>
-            
-            <div class="p-3 bg-white border-t border-slate-100 flex justify-end shrink-0">
-                <button onclick="clearMyOrdersHistory()" class="px-4 py-2 text-[10px] font-bold text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100 flex items-center gap-1.5 active:scale-95">
-                    <i class="fa-solid fa-trash-can"></i> Bersihkan Riwayat
-                </button>
             </div>
         </div>
     </div>
@@ -1076,7 +1070,6 @@ function doPost(e) {
 
         // Variables for Gatekeeper (Pesanan Masuk)
         let unconfirmedOrders = [];
-        let currentReviewOrderId = null;
         let acknowledgedOrders = JSON.parse(localStorage.getItem('pos_ack_orders') || '[]');
         let tableTokens = JSON.parse(localStorage.getItem('pos_table_tokens') || '{}');
 
@@ -1381,7 +1374,7 @@ function doPost(e) {
                 
                 if(window.innerWidth < 1024) toggleCart();
                 
-                customAlert("Pesanan Terkirim!", "Pesanan telah masuk ke Kasir. Anda dapat memantau orderan di tombol 'Status Pesanan' (kiri atas).\n\nAnda dapat menambahkan menu lagi jika ingin memesan tambahan.", "success");
+                customAlert("Pesanan Terkirim!", "Pesanan telah masuk ke Kasir.\n\nJika Anda ingin menambah pesanan lagi, silakan pilih menu dan tekan 'Kirim Pesanan' kembali.", "success");
                 
             } catch(e) {
                 console.error(e);
@@ -1400,7 +1393,6 @@ function doPost(e) {
             pollingInterval = setInterval(async () => {
                 if(!appConfig.scriptUrl) return;
                 try {
-                    // PENTING: Tambahkan &_=${Date.now()} untuk MENCEGAH browser menggunakan file Cache lama.
                     const response = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
                     if(!response.ok) return;
                     const data = await response.json();
@@ -1429,10 +1421,8 @@ function doPost(e) {
                             });
                         }
 
-                        // Selalu perbarui badge jika ada perubahan jumlah
                         updateIncomingOrderAlert();
                         
-                        // Jika modal list sedang terbuka dan ada data baru, render ulang
                         if (newlyAddedToQueue && !document.getElementById('incoming-queue-modal').classList.contains('hidden')) {
                             renderIncomingQueue();
                         }
@@ -1441,15 +1431,9 @@ function doPost(e) {
                         if (JSON.stringify(activeOrders) !== JSON.stringify(finalActiveOrders)) {
                             activeOrders = finalActiveOrders;
                             updateActiveOrdersBadge();
-                            if(!document.getElementById('active-orders-modal').classList.contains('hidden')) {
-                                renderActiveOrders();
-                            }
-                            if(!document.getElementById('table-modal').classList.contains('hidden')) {
-                                renderTables();
-                            }
-                            if(!document.getElementById('qr-modal').classList.contains('hidden')) {
-                                renderQRTableOptions();
-                            }
+                            if(!document.getElementById('active-orders-modal').classList.contains('hidden')) renderActiveOrders();
+                            if(!document.getElementById('table-modal').classList.contains('hidden')) renderTables();
+                            if(!document.getElementById('qr-modal').classList.contains('hidden')) renderQRTableOptions();
                         }
 
                         // 2. SYNC: Transaksi Harian
@@ -1465,9 +1449,7 @@ function doPost(e) {
                             
                             if(JSON.stringify(transactionHistory) !== JSON.stringify(newHistory)) {
                                 transactionHistory = newHistory;
-                                if(!document.getElementById('history-modal').classList.contains('hidden')) {
-                                    renderHistory();
-                                }
+                                if(!document.getElementById('history-modal').classList.contains('hidden')) renderHistory();
                             }
                         }
 
@@ -1490,9 +1472,7 @@ function doPost(e) {
                             if (JSON.stringify(categories) !== JSON.stringify(newCats)) {
                                 categories = newCats;
                                 renderCategories();
-                                if(!document.getElementById('category-modal').classList.contains('hidden')) {
-                                    renderCategoryManager();
-                                }
+                                if(!document.getElementById('category-modal').classList.contains('hidden')) renderCategoryManager();
                             }
                         }
                     }
@@ -1562,6 +1542,7 @@ function doPost(e) {
             }).join('');
         }
 
+        let currentReviewOrderId = null;
         function reviewSpecificOrder(id) {
             const order = unconfirmedOrders.find(o => o.id === id);
             if (!order) return;
@@ -1589,23 +1570,77 @@ function doPost(e) {
             });
         }
 
-        function acceptIncomingOrder() {
+        async function acceptIncomingOrder() {
             const index = unconfirmedOrders.findIndex(o => o.id === currentReviewOrderId);
             if(index === -1) return;
             
+            const btn = document.querySelector('#incoming-order-content button[onclick="acceptIncomingOrder()"]');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<div class="loader loader-white scale-75 inline-block mr-1"></div> Memproses...';
+            btn.disabled = true;
+
             const order = unconfirmedOrders.splice(index, 1)[0]; 
             
             acknowledgedOrders.push(order.id);
             localStorage.setItem('pos_ack_orders', JSON.stringify(acknowledgedOrders));
             
-            activeOrders.push(order);
-            updateIncomingOrderAlert();
-            updateActiveOrdersBadge();
+            if (appConfig.scriptUrl) {
+                try {
+                    // Hapus data asli SLF dari server agar HP pelanggan langsung ter-update jadi 'Diterima Kasir'
+                    await sendToGas({ action: 'deleteHoldBill', api_key: APP_API_KEY, id: order.id });
+                    
+                    let isMerged = false;
+                    
+                    // Cek jika pesanan adalah Dine In dan meja tersebut sudah punya pesanan aktif sebelumnya
+                    if (order.orderType === 'Dine In' && order.table && order.table !== 'Tanpa Meja') {
+                        const existingIdx = activeOrders.findIndex(o => o.orderType === 'Dine In' && o.table === order.table);
+                        if (existingIdx > -1) {
+                            const exOrder = activeOrders[existingIdx];
+                            
+                            // Gabungkan pesanan baru ke pesanan meja yang sudah ada
+                            order.cart.forEach(newItem => {
+                                const match = exOrder.cart.find(i => i.product.id === newItem.product.id);
+                                if (match) match.qty += newItem.qty;
+                                else exOrder.cart.push(newItem);
+                            });
+                            exOrder.total += order.total;
+                            
+                            // Hapus yang lama, simpan ulang yang sudah tergabung ke Cloud
+                            await sendToGas({ action: 'deleteHoldBill', api_key: APP_API_KEY, id: exOrder.id });
+                            await sendToGas({ action: 'saveHoldBill', api_key: APP_API_KEY, id: exOrder.id, order_type: exOrder.orderType, table_num: exOrder.table || '', total: exOrder.total, timestamp: exOrder.timestamp, cart: JSON.stringify(exOrder.cart) });
+                            
+                            isMerged = true;
+                            showToast(`Pesanan otomatis ditambahkan ke Meja ${order.table}`, "success");
+                        }
+                    }
+                    
+                    if (!isMerged) {
+                        // Jika bukan meja yang sama/Take Away, ubah jadi Hold Bill normal
+                        order.id = order.id.replace('SLF-', 'HLD-');
+                        activeOrders.push(order);
+                        await sendToGas({ action: 'saveHoldBill', api_key: APP_API_KEY, id: order.id, order_type: order.orderType, table_num: order.table || '', total: order.total, timestamp: order.timestamp, cart: JSON.stringify(order.cart) });
+                        showToast("Pesanan Diterima", "success");
+                    }
+                } catch(e) {
+                    console.error("Gagal sinkron", e);
+                    showToast("Gagal memproses ke server Cloud.", "error");
+                    // Fallback agar kasir tetap bisa lanjut
+                    if (!activeOrders.find(o => o.id === order.id)) {
+                        order.id = order.id.replace('SLF-', 'HLD-');
+                        activeOrders.push(order);
+                    }
+                }
+            } else {
+                order.id = order.id.replace('SLF-', 'HLD-');
+                activeOrders.push(order);
+            }
             
-            if(!document.getElementById('active-orders-modal').classList.contains('hidden')) renderActiveOrders();
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
             
             closeIncomingOrderModal(() => {
-                showToast("Pesanan Diterima", "success");
+                updateIncomingOrderAlert();
+                updateActiveOrdersBadge();
                 if(!document.getElementById('incoming-queue-modal').classList.contains('hidden')) {
                     renderIncomingQueue();
                 }
@@ -1679,7 +1714,6 @@ function doPost(e) {
             }
 
             try {
-                // PENTING: Tambahkan &_=${Date.now()} untuk MENCEGAH browser menggunakan file Cache lama.
                 const response = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
                 if(!response.ok) throw new Error('Gagal menghubungkan ke server.');
                 
@@ -2871,41 +2905,14 @@ function doPost(e) {
         }
         
         function renderQRTableOptions() {
-            const container = document.getElementById('qr-table-grid');
-            if (!container) return;
-            
-            let html = '';
-            for (let i = 1; i <= 16; i++) {
-                const isOccupied = activeOrders.some(o => o.orderType === 'Dine In' && o.table === i);
-                const isSelected = qrSelectedTable === i;
-                
-                let btnClass = "bg-white text-slate-700 border-slate-200 hover:border-teal-300 hover:bg-teal-50 shadow-sm"; 
-                if (isOccupied) btnClass = "bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200 shadow-sm";
-                if (isSelected) btnClass = "bg-gradient-to-r from-teal-600 to-emerald-500 text-white border-transparent shadow-md transform scale-105"; 
-                
-                html += `<button onclick="selectQRTable(${i})" class="py-1.5 rounded-lg border font-bold text-xs transition-all duration-300 active:scale-95 relative ${btnClass}">
-                            ${i}
-                            ${isOccupied ? `<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span>` : ''}
-                        </button>`;
-            }
-            container.innerHTML = html;
-
-            const btnGeneral = document.getElementById('btn-qr-general');
-            if (qrSelectedTable === 'general') {
-                btnGeneral.className = "w-full mt-1.5 py-1.5 rounded-lg border font-bold text-[11px] transition-all duration-300 bg-gradient-to-r from-teal-600 to-emerald-500 text-white border-transparent shadow-md";
-            } else {
-                btnGeneral.className = "w-full mt-1.5 py-1.5 rounded-lg border font-bold text-[11px] transition-all duration-300 bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-sm";
-            }
-        }
-
-        function selectQRTable(num) {
-            qrSelectedTable = num;
-            renderQRTableOptions();
-            generateQRCode();
+            const select = document.getElementById('qr-table-select');
+            let html = '<option value="general">Umum / Kasir (Take Away)</option>';
+            for(let i=1; i<=16; i++) { html += `<option value="${i}">Meja ${i}</option>`; }
+            select.innerHTML = html;
         }
 
         function regenerateQR() {
-            const table = qrSelectedTable || 'general';
+            const table = document.getElementById('qr-table-select').value;
             const newToken = Math.random().toString(36).substring(2, 10);
             tableTokens[table] = newToken;
             localStorage.setItem('pos_table_tokens', JSON.stringify(tableTokens));
@@ -2915,7 +2922,7 @@ function doPost(e) {
         }
         
         function generateQRCode() {
-            const table = qrSelectedTable || 'general';
+            const table = document.getElementById('qr-table-select').value;
             
             if(!tableTokens[table]) {
                 tableTokens[table] = Math.random().toString(36).substring(2, 10);
@@ -2956,7 +2963,7 @@ function doPost(e) {
         }
         
         function printQRCode() {
-            const table = qrSelectedTable || 'general';
+            const table = document.getElementById('qr-table-select').value;
             const qrSrc = document.getElementById('qr-image').src;
             const title = table === 'general' ? 'SCAN & PESAN' : `MEJA ${table}`;
             const subtitle = table === 'general' ? 'Pesan & Bayar dari HP' : 'Scan untuk memesan dari meja Anda';
@@ -3051,7 +3058,7 @@ function doPost(e) {
                 if(order.status === 'Menunggu') {
                     statusBadge = `<span class="bg-amber-100 text-amber-700 border border-amber-200 px-2 py-1 rounded shadow-sm text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-clock animate-pulse"></i> Menunggu Kasir</span>`;
                 } else {
-                    statusBadge = `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded shadow-sm text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-check-circle"></i> Selesai / Diproses</span>`;
+                    statusBadge = `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded shadow-sm text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-check-circle"></i> Diterima Kasir</span>`;
                 }
 
                 return `
@@ -3073,25 +3080,15 @@ function doPost(e) {
             }).join('');
         }
 
-        function clearMyOrdersHistory() {
-            customConfirm("Bersihkan Riwayat", "Riwayat pesanan yang tampil di perangkat ini akan dihapus. Lanjutkan?", () => {
-                mySelfOrders = [];
-                localStorage.setItem('pos_my_orders', JSON.stringify(mySelfOrders));
-                renderCustomerStatus();
-                updateCustomerStatusBadge();
-                showToast("Riwayat dibersihkan", "success");
-            });
-        }
-
         function startCustomerPolling() {
             if (!isSelfOrderMode || !appConfig.scriptUrl) return;
             
+            // Polling dipercepat jadi tiap 3 detik agar responsif
             customerPollingInterval = setInterval(async () => {
                 let pendingOrders = mySelfOrders.filter(o => o.status === 'Menunggu');
                 if (pendingOrders.length === 0) return;
 
                 try {
-                    // PENTING: Tambahkan &_=${Date.now()} untuk pemecah cache di sisi pelanggan.
                     const res = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
                     if(!res.ok) return;
                     const data = await res.json();
@@ -3100,6 +3097,8 @@ function doPost(e) {
                         let isUpdated = false;
                         mySelfOrders.forEach(myOrder => {
                             if(myOrder.status === 'Menunggu') {
+                                // Karena pesanan SLF dihapus kasir saat dikonfirmasi dan diganti ID-nya,
+                                // jika ID lama tidak ada, maka otomatis statusnya Diterima/Selesai.
                                 const stillExists = data.hold_bills.find(h => h.id === myOrder.id);
                                 if(!stillExists) {
                                     myOrder.status = 'Selesai';
@@ -3114,13 +3113,13 @@ function doPost(e) {
                             if(!document.getElementById('customer-status-modal').classList.contains('hidden')) {
                                 renderCustomerStatus();
                             }
-                            showToast("Pembaruan: Pesanan Anda telah diproses kasir!", "success");
+                            showToast("Pembaruan: Kasir telah menerima pesanan Anda!", "success");
                         }
                     }
                 } catch(e) {
                     console.warn("Customer polling failed", e);
                 }
-            }, 5000);
+            }, 3000); 
         }
 
         window.onload = initializeApp;
