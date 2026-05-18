@@ -1084,6 +1084,8 @@ function doPost(e) {
         
         let isSplitPaymentMode = false;
         let splitCartSelections = {}; 
+        let currentPaymentMethod = 'Tunai';
+        let currentTotalToPay = 0;
         
         let isSelfOrderMode = false;
         let pollingInterval = null; 
@@ -2685,6 +2687,42 @@ function doPost(e) {
             setTimeout(() => { document.getElementById('process-text').innerHTML = 'Selesaikan Transaksi'; }, 600);
         }
 
+        function printReceipt(cash, change, subtotal, tax, total, trxId) {
+            const dateStr = new Date().toLocaleString('id-ID');
+            let itemsHtml = '';
+            cart.forEach(item => {
+                itemsHtml += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span style="flex:1;">${item.product.nama} x${item.qty}</span><span>${formatRupiah(item.product.harga * item.qty)}</span></div>`;
+            });
+            const tableText = orderType === 'Dine In' && selectedTable && selectedTable !== 'Tanpa Meja' ? `<br>MEJA ${selectedTable}` : '';
+            
+            const kasirName = currentUser ? currentUser.nama : 'Admin Pusat';
+
+            const receiptHtml = `
+                <div style="width: 280px; padding: 15px; font-family: monospace; color: black; background: white; margin: 0 auto;">
+                    <h2 style="text-align: center; margin: 0 0 5px 0; font-size: 18px;">SMARTPOS</h2>
+                    <p style="text-align: center; margin: 0 0 5px 0; font-size: 11px;">ID: ${trxId}</p>
+                    <p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; border-bottom: 1px dashed black; padding-bottom: 10px;">${dateStr}<br>${kasirName}</p>
+                    <p style="text-align: center; font-weight: bold; font-size: 13px; margin: 0 0 15px 0; border-bottom: 1px dashed black; padding-bottom: 10px;">${orderType.toUpperCase()} ${tableText}</p>
+                    <div style="font-size: 11px; margin-bottom: 10px;">${itemsHtml}</div>
+                    <div style="border-top: 1px dashed black; padding-top: 10px; font-size: 11px;">
+                        <div style="display: flex; justify-content: space-between;"><span>Subtotal</span><span>${formatRupiah(subtotal)}</span></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Pajak 11%</span><span>${formatRupiah(tax)}</span></div>
+                        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; margin-top: 5px;"><span>TOTAL</span><span>${formatRupiah(total)}</span></div>
+                    </div>
+                    <div style="border-top: 1px dashed black; padding-top: 10px; margin-top: 10px; font-size: 11px;">
+                        <div style="display: flex; justify-content: space-between;"><span>Pembayaran</span><span style="font-weight:bold;">${currentPaymentMethod.toUpperCase()}</span></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Bayar</span><span>${formatRupiah(cash)}</span></div>
+                        ${currentPaymentMethod === 'Tunai' ? `<div style="display: flex; justify-content: space-between;"><span>Kembali</span><span>${formatRupiah(change)}</span></div>` : ''}
+                    </div>
+                    <p style="text-align: center; margin-top: 15px; font-size: 11px;">Terima Kasih!</p>
+                </div>
+            `;
+            const printArea = document.getElementById('print-receipt-area');
+            printArea.innerHTML = receiptHtml; printArea.classList.remove('hidden');
+            window.print();
+            setTimeout(() => { printArea.classList.add('hidden'); printArea.innerHTML = ''; }, 1000);
+        }
+
         function renderHistory() {
             const container = document.getElementById('history-list');
             
@@ -2894,19 +2932,123 @@ function doPost(e) {
             }
         }
 
-        function showToast(msg, type = 'info') {
-            const toast = document.getElementById('toast');
-            const icon = document.getElementById('toast-icon');
-            document.getElementById('toast-message').innerText = msg;
+        function startCustomerPolling() {
+            if (!isSelfOrderMode || !appConfig.scriptUrl) return;
             
-            toast.className = 'fixed bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 text-white px-3 md:px-4 py-2 md:py-2.5 rounded-xl flex items-center gap-2 z-[100000] transition-all duration-500 ease-premium transform border w-[90%] md:w-auto max-w-[300px]';
-            
-            if(type === 'success') { toast.classList.add('bg-emerald-600', 'shadow-btn'); icon.className = 'fa-solid fa-circle-check text-white shrink-0'; }
-            else if (type === 'error') { toast.classList.add('bg-red-500', 'shadow-md'); icon.className = 'fa-solid fa-circle-exclamation text-white shrink-0'; }
-            else { toast.classList.add('bg-slate-800', 'shadow-md'); icon.className = 'fa-solid fa-bell text-white shrink-0'; }
+            customerPollingInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
+                    if(!res.ok) return;
+                    const data = await res.json();
+                    
+                    if(data.status === 'success') {
+                        // KICK USER IF TOKEN CHANGED BY CASHIER (REAL-TIME KICK)
+                        const currentToken = new URLSearchParams(window.location.search).get('t') || new URLSearchParams(window.location.hash.substring(window.location.hash.indexOf('?'))).get('t');
+                        const tokens = data.tokens || [];
+                        const activeTokenObj = tokens.find(t => t.table_num == selectedTable);
 
-            requestAnimationFrame(() => { toast.classList.remove('translate-y-20', 'opacity-0'); });
-            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+                        if (activeTokenObj && currentToken && activeTokenObj.token !== currentToken) {
+                            document.getElementById('invalid-qr-screen').classList.remove('hidden');
+                            document.getElementById('invalid-qr-screen').classList.add('flex');
+                            clearInterval(customerPollingInterval); // Hentikan polling
+                            return;
+                        }
+
+                        // UPDATE ORDER STATUS
+                        let pendingOrders = mySelfOrders.filter(o => o.status === 'Menunggu');
+                        if (pendingOrders.length > 0) {
+                            let isUpdated = false;
+                            mySelfOrders.forEach(myOrder => {
+                                if(myOrder.status === 'Menunggu') {
+                                    const stillExists = data.hold_bills.find(h => h.id === myOrder.id);
+                                    if(!stillExists) {
+                                        myOrder.status = 'Selesai';
+                                        isUpdated = true;
+                                    }
+                                }
+                            });
+                            
+                            if(isUpdated) {
+                                localStorage.setItem('pos_my_orders', JSON.stringify(mySelfOrders));
+                                updateCustomerStatusBadge();
+                                if(!document.getElementById('customer-status-modal').classList.contains('hidden')) {
+                                    renderCustomerStatus();
+                                }
+                                showToast("Pembaruan: Kasir telah menerima pesanan Anda!", "success");
+                            }
+                        }
+                    }
+                } catch(e) {
+                    console.warn("Customer polling failed", e);
+                }
+            }, 3000); 
+        }
+
+        function updateCustomerStatusBadge() {
+            const badge = document.getElementById('customer-status-badge');
+            if(!badge) return;
+            const activeCount = mySelfOrders.filter(o => o.status === 'Menunggu').length;
+            if(activeCount > 0) {
+                badge.innerText = activeCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function openCustomerStatusModal() {
+            renderCustomerStatus();
+            const modal = document.getElementById('customer-status-modal');
+            const content = document.getElementById('customer-status-content');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95'); content.classList.add('scale-100');
+            });
+        }
+
+        function closeCustomerStatusModal() {
+            const modal = document.getElementById('customer-status-modal');
+            const content = document.getElementById('customer-status-content');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 500);
+        }
+
+        function renderCustomerStatus() {
+            const list = document.getElementById('customer-status-list');
+            if(mySelfOrders.length === 0) {
+                list.innerHTML = `<div class="text-center py-6 text-[11px] font-bold text-slate-400"><i class="fa-solid fa-receipt text-3xl mb-3 text-slate-300 block"></i>Belum ada riwayat pesanan.</div>`;
+                return;
+            }
+
+            list.innerHTML = mySelfOrders.map(order => {
+                const timeStr = new Date(order.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                
+                let statusBadge = '';
+                if(order.status === 'Menunggu') {
+                    statusBadge = `<span class="bg-amber-100 text-amber-700 border border-amber-200 px-2 py-1 rounded shadow-sm text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-clock animate-pulse"></i> Menunggu Kasir</span>`;
+                } else {
+                    statusBadge = `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded shadow-sm text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-check-circle"></i> Diterima Kasir</span>`;
+                }
+
+                return `
+                    <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm relative overflow-hidden group hover:border-slate-300 transition-all">
+                        ${order.status === 'Menunggu' ? '<div class="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>' : '<div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>'}
+                        <div class="flex justify-between items-start mb-2 pl-2">
+                            <div>
+                                <p class="text-[9px] font-bold text-slate-400 mb-0.5">${order.id}</p>
+                                <p class="text-[10px] font-bold text-slate-800"><i class="regular fa-clock text-[9px]"></i> ${timeStr}</p>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                        <div class="pl-2 border-t border-slate-100 pt-2 mt-1">
+                            <p class="text-[10px] text-slate-600 line-clamp-2 leading-relaxed font-medium">${order.items}</p>
+                            <p class="text-xs font-black text-slate-900 mt-1.5">${formatRupiah(order.total)}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function openQRModal() {
@@ -3057,161 +3199,6 @@ function doPost(e) {
                 </html>
             `);
             printWindow.document.close();
-        }
-
-        function printReceipt(cash, change, subtotal, tax, total, trxId) {
-            const dateStr = new Date().toLocaleString('id-ID');
-            let itemsHtml = '';
-            cart.forEach(item => {
-                itemsHtml += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span style="flex:1;">${item.product.nama} x${item.qty}</span><span>${formatRupiah(item.product.harga * item.qty)}</span></div>`;
-            });
-            const tableText = orderType === 'Dine In' && selectedTable && selectedTable !== 'Tanpa Meja' ? `<br>MEJA ${selectedTable}` : '';
-            
-            const kasirName = currentUser ? currentUser.nama : 'Admin Pusat';
-
-            const receiptHtml = `
-                <div style="width: 280px; padding: 15px; font-family: monospace; color: black; background: white; margin: 0 auto;">
-                    <h2 style="text-align: center; margin: 0 0 5px 0; font-size: 18px;">SMARTPOS</h2>
-                    <p style="text-align: center; margin: 0 0 5px 0; font-size: 11px;">ID: ${trxId}</p>
-                    <p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; border-bottom: 1px dashed black; padding-bottom: 10px;">${dateStr}<br>${kasirName}</p>
-                    <p style="text-align: center; font-weight: bold; font-size: 13px; margin: 0 0 15px 0; border-bottom: 1px dashed black; padding-bottom: 10px;">${orderType.toUpperCase()} ${tableText}</p>
-                    <div style="font-size: 11px; margin-bottom: 10px;">${itemsHtml}</div>
-                    <div style="border-top: 1px dashed black; padding-top: 10px; font-size: 11px;">
-                        <div style="display: flex; justify-content: space-between;"><span>Subtotal</span><span>${formatRupiah(subtotal)}</span></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Pajak 11%</span><span>${formatRupiah(tax)}</span></div>
-                        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; margin-top: 5px;"><span>TOTAL</span><span>${formatRupiah(total)}</span></div>
-                    </div>
-                    <div style="border-top: 1px dashed black; padding-top: 10px; margin-top: 10px; font-size: 11px;">
-                        <div style="display: flex; justify-content: space-between;"><span>Pembayaran</span><span style="font-weight:bold;">${currentPaymentMethod.toUpperCase()}</span></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Bayar</span><span>${formatRupiah(cash)}</span></div>
-                        ${currentPaymentMethod === 'Tunai' ? `<div style="display: flex; justify-content: space-between;"><span>Kembali</span><span>${formatRupiah(change)}</span></div>` : ''}
-                    </div>
-                    <p style="text-align: center; margin-top: 15px; font-size: 11px;">Terima Kasih!</p>
-                </div>
-            `;
-            const printArea = document.getElementById('print-receipt-area');
-            printArea.innerHTML = receiptHtml; printArea.classList.remove('hidden');
-            window.print();
-            setTimeout(() => { printArea.classList.add('hidden'); printArea.innerHTML = ''; }, 1000);
-        }
-
-        function startCustomerPolling() {
-            if (!isSelfOrderMode || !appConfig.scriptUrl) return;
-            
-            customerPollingInterval = setInterval(async () => {
-                try {
-                    const res = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
-                    if(!res.ok) return;
-                    const data = await res.json();
-                    
-                    if(data.status === 'success') {
-                        // KICK USER IF TOKEN CHANGED BY CASHIER (REAL-TIME KICK)
-                        const currentToken = new URLSearchParams(window.location.search).get('t') || new URLSearchParams(window.location.hash.substring(window.location.hash.indexOf('?'))).get('t');
-                        const tokens = data.tokens || [];
-                        const activeTokenObj = tokens.find(t => t.table_num == selectedTable);
-
-                        if (activeTokenObj && currentToken && activeTokenObj.token !== currentToken) {
-                            document.getElementById('invalid-qr-screen').classList.remove('hidden');
-                            document.getElementById('invalid-qr-screen').classList.add('flex');
-                            clearInterval(customerPollingInterval); // Hentikan polling
-                            return;
-                        }
-
-                        // UPDATE ORDER STATUS
-                        let pendingOrders = mySelfOrders.filter(o => o.status === 'Menunggu');
-                        if (pendingOrders.length > 0) {
-                            let isUpdated = false;
-                            mySelfOrders.forEach(myOrder => {
-                                if(myOrder.status === 'Menunggu') {
-                                    const stillExists = data.hold_bills.find(h => h.id === myOrder.id);
-                                    if(!stillExists) {
-                                        myOrder.status = 'Selesai';
-                                        isUpdated = true;
-                                    }
-                                }
-                            });
-                            
-                            if(isUpdated) {
-                                localStorage.setItem('pos_my_orders', JSON.stringify(mySelfOrders));
-                                updateCustomerStatusBadge();
-                                if(!document.getElementById('customer-status-modal').classList.contains('hidden')) {
-                                    renderCustomerStatus();
-                                }
-                                showToast("Pembaruan: Kasir telah menerima pesanan Anda!", "success");
-                            }
-                        }
-                    }
-                } catch(e) {
-                    console.warn("Customer polling failed", e);
-                }
-            }, 3000); 
-        }
-
-        function updateCustomerStatusBadge() {
-            const badge = document.getElementById('customer-status-badge');
-            if(!badge) return;
-            const activeCount = mySelfOrders.filter(o => o.status === 'Menunggu').length;
-            if(activeCount > 0) {
-                badge.innerText = activeCount;
-                badge.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden');
-            }
-        }
-
-        function openCustomerStatusModal() {
-            renderCustomerStatus();
-            const modal = document.getElementById('customer-status-modal');
-            const content = document.getElementById('customer-status-content');
-            modal.classList.remove('hidden');
-            requestAnimationFrame(() => {
-                modal.classList.add('opacity-100'); modal.classList.remove('opacity-0');
-                content.classList.remove('scale-95'); content.classList.add('scale-100');
-            });
-        }
-
-        function closeCustomerStatusModal() {
-            const modal = document.getElementById('customer-status-modal');
-            const content = document.getElementById('customer-status-content');
-            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
-            content.classList.remove('scale-100'); content.classList.add('scale-95');
-            setTimeout(() => modal.classList.add('hidden'), 500);
-        }
-
-        function renderCustomerStatus() {
-            const list = document.getElementById('customer-status-list');
-            if(mySelfOrders.length === 0) {
-                list.innerHTML = `<div class="text-center py-6 text-[11px] font-bold text-slate-400"><i class="fa-solid fa-receipt text-3xl mb-3 text-slate-300 block"></i>Belum ada riwayat pesanan.</div>`;
-                return;
-            }
-
-            list.innerHTML = mySelfOrders.map(order => {
-                const timeStr = new Date(order.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                
-                let statusBadge = '';
-                if(order.status === 'Menunggu') {
-                    statusBadge = `<span class="bg-amber-100 text-amber-700 border border-amber-200 px-2 py-1 rounded shadow-sm text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-clock animate-pulse"></i> Menunggu Kasir</span>`;
-                } else {
-                    statusBadge = `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded shadow-sm text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-check-circle"></i> Diterima Kasir</span>`;
-                }
-
-                return `
-                    <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm relative overflow-hidden group hover:border-slate-300 transition-all">
-                        ${order.status === 'Menunggu' ? '<div class="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>' : '<div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>'}
-                        <div class="flex justify-between items-start mb-2 pl-2">
-                            <div>
-                                <p class="text-[9px] font-bold text-slate-400 mb-0.5">${order.id}</p>
-                                <p class="text-[10px] font-bold text-slate-800"><i class="regular fa-clock text-[9px]"></i> ${timeStr}</p>
-                            </div>
-                            ${statusBadge}
-                        </div>
-                        <div class="pl-2 border-t border-slate-100 pt-2 mt-1">
-                            <p class="text-[10px] text-slate-600 line-clamp-2 leading-relaxed font-medium">${order.items}</p>
-                            <p class="text-xs font-black text-slate-900 mt-1.5">${formatRupiah(order.total)}</p>
-                        </div>
-                    </div>
-                `;
-            }).join('');
         }
 
         function toggleFullScreen() {
