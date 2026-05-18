@@ -139,8 +139,21 @@
     <!-- Background Overlay -->
     <div class="fixed inset-0 bg-slate-50/95 -z-10 backdrop-blur-3xl"></div>
 
+    <!-- Halaman Invalid / Expired QR (Mencegah Akses Pelanggan Ilegal) -->
+    <div id="invalid-qr-screen" class="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-[100000] hidden flex-col items-center justify-center text-center p-6 transition-all duration-500">
+        <div class="bg-white p-8 rounded-[2rem] shadow-2xl max-w-md w-full flex flex-col items-center transform scale-105 border border-red-100">
+            <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-5 border-4 border-red-100 animate-pulse">
+                <i class="fa-solid fa-qrcode text-4xl text-red-500"></i>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 mb-2 tracking-tight">QR Code Kadaluarsa</h1>
+            <p class="text-slate-500 text-sm mb-6 leading-relaxed">Sesi pesanan untuk meja ini telah diperbarui atau ditutup oleh Kasir. QR Code ini sudah tidak dapat digunakan.</p>
+            <button onclick="location.reload()" class="w-full py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">Coba Muat Ulang</button>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
     <div id="login-screen" class="fixed inset-0 bg-slate-50 z-[9999] flex items-center justify-center transition-opacity duration-500">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm flex flex-col border border-slate-100 transform transition-transform duration-500 hover:scale-[1.01]">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm flex flex-col border border-slate-100 transform transition-transform duration-500 hover:scale-[1.01]" id="login-box-content">
             <div class="flex items-center justify-center gap-3 mb-8">
                 <div class="w-12 h-12 bg-slate-900 text-white rounded-xl shadow-md flex items-center justify-center">
                     <i class="fa-solid fa-store text-xl"></i>
@@ -457,7 +470,13 @@
                     <!-- Dimuat JS -->
                 </div>
 
-                <div id="qr-code-display-section" class="w-full hidden flex-col items-center border-t border-slate-200 pt-4">
+                <div id="qr-code-display-section" class="w-full hidden flex-col items-center border-t border-slate-200 pt-4 relative">
+                    <!-- Loading state for QR generation -->
+                    <div id="qr-loader" class="absolute inset-0 bg-white/80 z-10 hidden flex-col items-center justify-center">
+                        <div class="loader mb-2"></div>
+                        <span class="text-xs font-bold text-slate-500">Memperbarui...</span>
+                    </div>
+
                     <p class="text-xs font-bold text-slate-800 mb-2" id="qr-table-label">Meja -</p>
                     <div class="p-3 bg-white border border-slate-200 rounded-xl shadow-sm mb-4 w-full flex justify-center">
                         <img id="qr-image" src="" alt="QR Code" class="w-40 h-40 object-contain">
@@ -495,7 +514,6 @@
     <div id="payment-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] hidden flex items-end md:items-center justify-center sm:p-4 opacity-0 transition-opacity duration-500 ease-premium">
         <div class="bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden transform translate-y-full md:translate-y-0 md:scale-95 transition-all duration-500 ease-premium relative flex flex-col md:flex-row border border-slate-100" id="payment-modal-content">
             
-            <!-- KOLOM KIRI: RINCIAN & SPLIT BILL -->
             <div class="w-full md:w-5/12 flex flex-col border-b md:border-b-0 md:border-r border-slate-100 bg-slate-50/50">
                 <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                     <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -519,7 +537,6 @@
                 <div class="flex-1 overflow-y-auto p-3 custom-scrollbar flex flex-col gap-2 max-h-[35vh] md:max-h-none" id="payment-split-items"></div>
             </div>
 
-            <!-- KOLOM KANAN: METODE PEMBAYARAN -->
             <div class="w-full md:w-7/12 flex flex-col bg-white">
                 <div class="hidden md:flex px-5 pt-5 pb-3 justify-between items-center shrink-0 border-b border-slate-50">
                     <h3 class="font-extrabold text-lg text-slate-900 tracking-tight">Proses Pembayaran</h3>
@@ -735,13 +752,14 @@ function getHeaders(sheet) {
 function initDatabase() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) return;
-  var sheets = ["Produk", "Kategori", "Transaksi", "Hold_Bills", "Users"];
+  var sheets = ["Produk", "Kategori", "Transaksi", "Hold_Bills", "Users", "Tokens"];
   var headers = {
     "Produk": ["id", "nama", "kategori", "harga", "gambar"],
     "Kategori": ["id", "nama"],
     "Transaksi": ["id_transaksi", "tanggal", "total_belanja", "uang_dibayar", "kembalian", "tipe_pesanan", "items"],
     "Hold_Bills": ["id", "order_type", "table_num", "total", "timestamp", "cart"],
-    "Users": ["username", "password", "nama", "role"]
+    "Users": ["username", "password", "nama", "role"],
+    "Tokens": ["table_num", "token"]
   };
 
   sheets.forEach(function(s) {
@@ -785,6 +803,7 @@ function doGet(e) {
       var prodData = getSheetData("Produk");
       var catData = getSheetData("Kategori");
       var holdData = getSheetData("Hold_Bills");
+      var tokenData = getSheetData("Tokens");
       
       var sheetTrx = ss.getSheetByName("Transaksi");
       var dataTrx = sheetTrx.getDataRange().getValues();
@@ -805,7 +824,8 @@ function doGet(e) {
          products: prodData, 
          categories: catData, 
          hold_bills: holdData,
-         transactions: trxResult
+         transactions: trxResult,
+         tokens: tokenData
       })).setMimeType(ContentService.MimeType.JSON);
     }
   } catch (error) {
@@ -838,6 +858,20 @@ function doPost(e) {
         }
       }
       return ContentService.createTextOutput(JSON.stringify({"result": "error", "message": "Username atau Password salah!"})).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    if (action === 'updateToken') {
+      var sheet = ss.getSheetByName('Tokens');
+      var data = sheet.getDataRange().getValues();
+      var found = false;
+      for(var i=1; i<data.length; i++){
+        if(data[i][0] == e.parameter.table_num){
+           sheet.getRange(i+1, 2).setValue(e.parameter.token);
+           found = true; break;
+        }
+      }
+      if(!found) sheet.appendRow([e.parameter.table_num, e.parameter.token]);
+      return ContentService.createTextOutput(JSON.stringify({"result": "success"})).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (action === 'saveTransaction' || action === 'addProduct' || action === 'addCategory' || action === 'saveHoldBill') {
@@ -1054,7 +1088,7 @@ function doPost(e) {
         let isSelfOrderMode = false;
         let pollingInterval = null; 
         
-        let qrSelectedTable = null; // Menyimpan status meja yang sedang dipilih pada modal QR
+        let qrSelectedTable = null; 
 
         // Variables for Gatekeeper (Pesanan Masuk)
         let unconfirmedOrders = [];
@@ -1166,6 +1200,7 @@ function doPost(e) {
             }
             const urlParams = new URLSearchParams(urlSearch);
             
+            // LOGIC KETIKA DIAKSES PELANGGAN (VIA QR CODE)
             if (urlParams.get('mode') === 'selforder') {
                 isSelfOrderMode = true;
                 selectedTable = urlParams.get('table');
@@ -1183,6 +1218,31 @@ function doPost(e) {
                 }
                 
                 const loginScreen = document.getElementById('login-screen');
+                const loginBox = document.getElementById('login-box-content');
+
+                // Validasi Keamanan Token Real-time via Cloud Database Saat Awal Load
+                if (appConfig.scriptUrl && currentToken) {
+                    loginBox.innerHTML = `<div class="flex flex-col items-center justify-center text-center"><div class="loader mb-4"></div><h2 class="font-bold text-slate-800 text-lg mb-1">Memverifikasi Sesi...</h2><p class="text-xs text-slate-500">Mengecek validitas QR Code</p></div>`;
+                    try {
+                        const res = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
+                        const data = await res.json();
+                        if(data.status === 'success') {
+                            const tokens = data.tokens || [];
+                            const activeTokenObj = tokens.find(t => t.table_num == selectedTable);
+
+                            // Jika Token URL Berbeda Dengan Server Cloud = KADALUARSA! BLOKIR!
+                            if (activeTokenObj && activeTokenObj.token !== currentToken) {
+                                loginScreen.style.display = 'none';
+                                document.getElementById('invalid-qr-screen').classList.remove('hidden');
+                                document.getElementById('invalid-qr-screen').classList.add('flex');
+                                return; // Berhenti proses inisialisasi aplikasi
+                            }
+                        }
+                    } catch(e) {
+                        console.error("Gagal memverifikasi token", e);
+                    }
+                }
+
                 loginScreen.style.transition = 'none'; 
                 loginScreen.style.display = 'none';
 
@@ -1193,6 +1253,7 @@ function doPost(e) {
                 setupSelfOrderUI();
                 await fetchInitialData();
             } else {
+                // LOGIC KETIKA DIAKSES KASIR
                 const savedUser = localStorage.getItem('pos_current_user');
                 const loginScreen = document.getElementById('login-screen');
                 
@@ -2766,29 +2827,6 @@ function doPost(e) {
             applySplitView();
         }
 
-        function toggleFullScreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    showToast(`Gagal memuat layar penuh: ${err.message}`, "error");
-                });
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                }
-            }
-        }
-
-        document.addEventListener('fullscreenchange', () => {
-            const icon = document.getElementById('fullscreen-icon');
-            if (icon) {
-                if (document.fullscreenElement) {
-                    icon.classList.replace('fa-expand', 'fa-compress');
-                } else {
-                    icon.classList.replace('fa-compress', 'fa-expand');
-                }
-            }
-        });
-
         function openViewSettings() {
             document.getElementById('grid-columns-range').value = gridCols;
             updateGridColumnsDisplay(); updateViewTypeButtons();
@@ -2829,12 +2867,12 @@ function doPost(e) {
             const inactiveClass = "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700";
             
             if(viewType === 'grid') {
-                btnGrid.className = `flex-1 py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs ${activeClass}`;
-                btnList.className = `flex-1 py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs ${inactiveClass}`;
+                btnGrid.className = `py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs ${activeClass}`;
+                btnList.className = `py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs ${inactiveClass}`;
                 gridSettings.style.display = 'block';
             } else {
-                btnList.className = `flex-1 py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs ${activeClass}`;
-                btnGrid.className = `flex-1 py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs ${inactiveClass}`;
+                btnList.className = `py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs ${activeClass}`;
+                btnGrid.className = `py-2 rounded-lg font-bold border-2 transition-all duration-300 flex flex-col items-center gap-1 text-xs ${inactiveClass}`;
                 gridSettings.style.display = 'none';
             }
         }
@@ -2938,16 +2976,28 @@ function doPost(e) {
             generateQRCode();
         }
 
-        function regenerateQR() {
+        async function regenerateQR() {
             const table = qrSelectedTable;
             if(!table) return;
+
+            const loader = document.getElementById('qr-loader');
+            loader.classList.remove('hidden'); loader.classList.add('flex');
             
             const newToken = Math.random().toString(36).substring(2, 10);
             tableTokens[table] = newToken;
             localStorage.setItem('pos_table_tokens', JSON.stringify(tableTokens));
+
+            if (appConfig.scriptUrl) {
+                try {
+                    await sendToGas({ action: 'updateToken', api_key: APP_API_KEY, table_num: table, token: newToken });
+                } catch(e) {
+                    console.error("Gagal sync token", e);
+                }
+            }
             
-            showToast("QR Code diperbarui! QR yang difoto pelanggan sebelumnya akan kadaluarsa.", "success");
+            showToast("QR Code diperbarui! QR lama otomatis tidak berlaku.", "success");
             generateQRCode();
+            loader.classList.add('hidden'); loader.classList.remove('flex');
         }
         
         function generateQRCode() {
@@ -2957,6 +3007,10 @@ function doPost(e) {
             if(!tableTokens[table]) {
                 tableTokens[table] = Math.random().toString(36).substring(2, 10);
                 localStorage.setItem('pos_table_tokens', JSON.stringify(tableTokens));
+                
+                if (appConfig.scriptUrl) {
+                    sendToGas({ action: 'updateToken', api_key: APP_API_KEY, table_num: table, token: tableTokens[table] }).catch(e => console.log(e));
+                }
             }
             const token = tableTokens[table];
 
@@ -3045,33 +3099,46 @@ function doPost(e) {
             if (!isSelfOrderMode || !appConfig.scriptUrl) return;
             
             customerPollingInterval = setInterval(async () => {
-                let pendingOrders = mySelfOrders.filter(o => o.status === 'Menunggu');
-                if (pendingOrders.length === 0) return;
-
                 try {
                     const res = await fetch(`${appConfig.scriptUrl}?action=getData&api_key=${APP_API_KEY}&_=${Date.now()}`);
                     if(!res.ok) return;
                     const data = await res.json();
                     
                     if(data.status === 'success') {
-                        let isUpdated = false;
-                        mySelfOrders.forEach(myOrder => {
-                            if(myOrder.status === 'Menunggu') {
-                                const stillExists = data.hold_bills.find(h => h.id === myOrder.id);
-                                if(!stillExists) {
-                                    myOrder.status = 'Selesai';
-                                    isUpdated = true;
+                        // KICK USER IF TOKEN CHANGED BY CASHIER (REAL-TIME KICK)
+                        const currentToken = new URLSearchParams(window.location.search).get('t') || new URLSearchParams(window.location.hash.substring(window.location.hash.indexOf('?'))).get('t');
+                        const tokens = data.tokens || [];
+                        const activeTokenObj = tokens.find(t => t.table_num == selectedTable);
+
+                        if (activeTokenObj && currentToken && activeTokenObj.token !== currentToken) {
+                            document.getElementById('invalid-qr-screen').classList.remove('hidden');
+                            document.getElementById('invalid-qr-screen').classList.add('flex');
+                            clearInterval(customerPollingInterval); // Hentikan polling
+                            return;
+                        }
+
+                        // UPDATE ORDER STATUS
+                        let pendingOrders = mySelfOrders.filter(o => o.status === 'Menunggu');
+                        if (pendingOrders.length > 0) {
+                            let isUpdated = false;
+                            mySelfOrders.forEach(myOrder => {
+                                if(myOrder.status === 'Menunggu') {
+                                    const stillExists = data.hold_bills.find(h => h.id === myOrder.id);
+                                    if(!stillExists) {
+                                        myOrder.status = 'Selesai';
+                                        isUpdated = true;
+                                    }
                                 }
+                            });
+                            
+                            if(isUpdated) {
+                                localStorage.setItem('pos_my_orders', JSON.stringify(mySelfOrders));
+                                updateCustomerStatusBadge();
+                                if(!document.getElementById('customer-status-modal').classList.contains('hidden')) {
+                                    renderCustomerStatus();
+                                }
+                                showToast("Pembaruan: Kasir telah menerima pesanan Anda!", "success");
                             }
-                        });
-                        
-                        if(isUpdated) {
-                            localStorage.setItem('pos_my_orders', JSON.stringify(mySelfOrders));
-                            updateCustomerStatusBadge();
-                            if(!document.getElementById('customer-status-modal').classList.contains('hidden')) {
-                                renderCustomerStatus();
-                            }
-                            showToast("Pembaruan: Kasir telah menerima pesanan Anda!", "success");
                         }
                     }
                 } catch(e) {
@@ -3146,6 +3213,27 @@ function doPost(e) {
                 `;
             }).join('');
         }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    showToast(`Gagal memuat layar penuh: ${err.message}`, "error");
+                });
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            const icon = document.getElementById('fullscreen-icon');
+            if (icon) {
+                if (document.fullscreenElement) {
+                    icon.classList.replace('fa-expand', 'fa-compress');
+                } else {
+                    icon.classList.replace('fa-compress', 'fa-expand');
+                }
+            }
+        });
 
         window.onload = initializeApp;
     </script>
